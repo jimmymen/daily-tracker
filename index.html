@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
-    <title>✨ 闪亮每一天 - 我的专属日程表</title>
+    <title>我的专属日程表</title>
     <!-- 引入拖动库 SortableJS -->
     <script src="https://cdnjs.cloudflare.com/ajax/libs/Sortable/1.15.0/Sortable.min.js"></script>
     <style>
@@ -54,13 +54,21 @@
             box-shadow: var(--shadow);
             position: relative;
             overflow: hidden;
+            transition: all 0.5s ease;
         }
         
         .cloud { position: absolute; background: rgba(255,255,255,0.3); border-radius: 50%; }
         .c1 { width: 60px; height: 60px; top: -10px; left: 20px; }
         .c2 { width: 100px; height: 100px; bottom: -30px; right: -20px; }
 
-        h1 { font-size: 1.8rem; margin-bottom: 5px; text-shadow: 1px 1px 3px rgba(0,0,0,0.1); }
+        /* 标题样式 */
+        h1 { 
+            font-size: 1.8rem; 
+            margin-bottom: 5px; 
+            text-shadow: 1px 1px 3px rgba(0,0,0,0.1); 
+            min-height: 2.4rem; /* 防止标题切换时抖动 */
+        }
+        
         .date-badge {
             background: rgba(255,255,255,0.25);
             padding: 5px 15px; border-radius: 20px;
@@ -94,15 +102,12 @@
             border: 2px solid transparent;
             transition: transform 0.2s, background 0.2s;
             position: relative; overflow: hidden;
-            /* 关键：允许触摸操作 */
             touch-action: pan-y; 
         }
 
-        /* 拖动时的样式 */
         .sortable-ghost { opacity: 0.5; background: #f0f0f0; border: 2px dashed #ccc; }
         .sortable-drag { background: #fff; transform: scale(1.05); box-shadow: 0 10px 20px rgba(0,0,0,0.1); }
 
-        /* 拖动手柄 */
         .drag-handle {
             color: #d1d5db; cursor: grab; padding: 5px;
             font-size: 1.2rem; line-height: 1;
@@ -196,7 +201,8 @@
         <div class="header-card">
             <div class="cloud c1"></div>
             <div class="cloud c2"></div>
-            <h1>✨ 闪闪发光的一天</h1>
+            <!-- ID变更为 appTitle 用来动态修改 -->
+            <h1 id="appTitle">✨ 闪闪发光的一天</h1>
             <div class="date-badge" id="dateDisplay">加载中...</div>
         </div>
 
@@ -240,10 +246,25 @@
             { id: 5, text: "按时睡觉不磨蹭 🌙", done: false }
         ];
 
-        let tasks = [];
-        let sortableInstance = null; // 保存拖动实例
+        // === 📅 魔法标题库 (随机显示) ===
+        const titleList = [
+            "✨ 闪闪发光的一天",
+            "🌈 把今天变成彩虹色",
+            "🚀 开启元气满满的一天",
+            "👑 小公主的冒险日记",
+            "🌟 今天要去收集星星",
+            "🎈 快乐出发！GoGo！",
+            "🌻 像向日葵一样生长",
+            "🎡 今天的魔法开始啦",
+            "🐾 踏出勇敢的一小步",
+            "🍬 给生活加一点甜",
+            "🧸 快乐去收割任务吧",
+            "🎨 今天是画出来的"
+        ];
 
-        // 鼓励语库
+        let tasks = [];
+        let sortableInstance = null;
+
         const quotes = {
             hero: ["哇！今天的任务怪兽全被你打败了！🦸‍♀️", "滴！勤奋能量已充满！🔋", "困难被你踩在脚下啦！✨", "你是魔法少女本人吧？🪄", "为战胜偷懒的自己骄傲！😈"],
             reward: ["去冰箱找找好吃的奖励！🍦", "有资格躺沙发发呆十分钟！🛋️", "去抱抱爸爸妈妈吧！👨‍👩‍👧", "该去看一集动画片了！📺", "快去玩最喜欢的玩具吧！🧸"],
@@ -252,10 +273,18 @@
         };
 
         function init() {
+            // 1. 设置日期
             const now = new Date();
             const dateStr = now.toLocaleDateString('zh-CN', { month: 'long', day: 'numeric', weekday: 'long' });
             document.getElementById('dateDisplay').textContent = dateStr;
 
+            // 2. 设置随机标题 (每次刷新都变)
+            const randomTitle = titleList[Math.floor(Math.random() * titleList.length)];
+            document.getElementById('appTitle').textContent = randomTitle;
+            // 顺便改一下浏览器标签页标题
+            document.title = randomTitle;
+
+            // 3. 智能重置检查
             const savedDate = localStorage.getItem(LS_KEY_DATE);
             const todayStr = now.toDateString();
             const savedTasks = localStorage.getItem(LS_KEY_TASKS);
@@ -273,24 +302,22 @@
             }
 
             render();
-            initSortable(); // 初始化拖动功能
+            initSortable();
         }
 
-        // 初始化拖动逻辑
         function initSortable() {
             const el = document.getElementById('taskList');
             sortableInstance = new Sortable(el, {
-                animation: 150, // 动画速度
-                handle: '.drag-handle', // 只能拖动这个手柄
-                ghostClass: 'sortable-ghost', // 拖动时的占位样式
-                dragClass: 'sortable-drag', // 拖动中的样式
-                delay: 100, // 稍微延迟防止误触
+                animation: 150,
+                handle: '.drag-handle',
+                ghostClass: 'sortable-ghost',
+                dragClass: 'sortable-drag',
+                delay: 100,
                 delayOnTouchOnly: true,
                 onEnd: function (evt) {
-                    // 拖动结束，更新数组顺序
                     const item = tasks.splice(evt.oldIndex, 1)[0];
                     tasks.splice(evt.newIndex, 0, item);
-                    saveData(); // 保存新顺序
+                    saveData();
                 }
             });
         }
@@ -304,8 +331,6 @@
                 if (task.done) doneCount++;
                 const div = document.createElement('div');
                 div.className = `task-item ${task.done ? 'done' : ''}`;
-                
-                // 仅点击文本或复选框才触发完成
                 const toggleFn = (e) => toggleTask(task.id, e);
                 
                 div.innerHTML = `
