@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
-    <title>我的专属日程表</title>
+    <title>我的专属日程手账</title>
     <!-- 引入拖动库 SortableJS -->
     <script src="https://cdnjs.cloudflare.com/ajax/libs/Sortable/1.15.0/Sortable.min.js"></script>
     <style>
@@ -12,14 +12,10 @@
             --primary: #ff9a9e;       /* 主色：樱花粉 */
             --primary-dark: #ff6b6b;  /* 深粉 */
             --accent: #84fab0;        /* 辅色：薄荷绿 */
-            --bg: #fffcf5;            /* 背景：暖米白 (护眼) */
+            --bg: #fffcf5;            /* 背景：暖米白 */
             --text: #5e5e5e;          /* 文字：深灰 */
             --border: #ffe2e2;
-            
-            /* 状态颜色 */
             --done-bg: #f0fdf4;       /* 完成后的背景 */
-            
-            /* 阴影 */
             --shadow: 0 8px 20px rgba(255, 154, 158, 0.2);
         }
 
@@ -41,39 +37,53 @@
             display: flex;
             flex-direction: column;
             gap: 20px;
-            padding-bottom: 80px;
+            padding-bottom: 100px; /* 留出底部空间 */
         }
 
         /* === 🌈 顶部标题区 === */
         .header-card {
             background: linear-gradient(135deg, #a18cd1 0%, #fbc2eb 100%);
             border-radius: 20px;
-            padding: 30px 20px;
+            padding: 25px 20px;
             text-align: center;
             color: white;
             box-shadow: var(--shadow);
             position: relative;
             overflow: hidden;
-            transition: all 0.5s ease;
         }
         
-        .cloud { position: absolute; background: rgba(255,255,255,0.3); border-radius: 50%; }
-        .c1 { width: 60px; height: 60px; top: -10px; left: 20px; }
-        .c2 { width: 100px; height: 100px; bottom: -30px; right: -20px; }
-
-        /* 标题样式 */
-        h1 { 
-            font-size: 1.8rem; 
-            margin-bottom: 5px; 
-            text-shadow: 1px 1px 3px rgba(0,0,0,0.1); 
-            min-height: 2.4rem; 
+        .header-top-row {
+            display: flex; justify-content: space-between; align-items: flex-start;
+            position: relative; z-index: 2;
         }
+
+        /* 日历按钮 */
+        .btn-calendar {
+            background: rgba(255,255,255,0.25);
+            border: 1px solid rgba(255,255,255,0.4);
+            color: white; padding: 8px 12px; border-radius: 12px;
+            font-size: 1.2rem; cursor: pointer; backdrop-filter: blur(5px);
+            transition: 0.2s;
+        }
+        .btn-calendar:active { transform: scale(0.95); background: rgba(255,255,255,0.4); }
+
+        .title-area { flex: 1; }
+        h1 { font-size: 1.6rem; margin-bottom: 5px; text-shadow: 1px 1px 3px rgba(0,0,0,0.1); }
         
         .date-badge {
             background: rgba(255,255,255,0.25);
-            padding: 5px 15px; border-radius: 20px;
-            font-size: 0.9rem; display: inline-block;
+            padding: 4px 12px; border-radius: 20px;
+            font-size: 0.85rem; display: inline-block;
             backdrop-filter: blur(5px); font-weight: bold;
+        }
+
+        /* 回到今天按钮 (默认隐藏) */
+        .btn-today-return {
+            display: none; margin-top: 10px;
+            background: #fff; color: var(--primary-dark);
+            border: none; padding: 5px 15px; border-radius: 20px;
+            font-size: 0.8rem; font-weight: bold; cursor: pointer;
+            box-shadow: 0 2px 5px rgba(0,0,0,0.1);
         }
 
         /* === 📊 进度条 === */
@@ -83,39 +93,31 @@
             border: 2px solid var(--border);
             display: flex; align-items: center; gap: 15px;
         }
-        .progress-text { font-weight: bold; color: var(--primary-dark); font-size: 1.1rem; min-width: 60px; }
+        .progress-text { font-weight: bold; color: var(--primary-dark); font-size: 1.1rem; min-width: 50px; }
         .progress-bar-bg { flex: 1; height: 12px; background: #f0f0f0; border-radius: 6px; overflow: hidden; }
         .progress-bar-fill {
             height: 100%; width: 0%;
             background: linear-gradient(90deg, #ff9a9e, #fad0c4);
             border-radius: 6px;
-            transition: width 0.5s cubic-bezier(0.34, 1.56, 0.64, 1);
+            transition: width 0.5s ease;
         }
 
-        /* === ✅ 任务列表 (支持拖动) === */
-        .task-list { display: flex; flex-direction: column; gap: 12px; transition: all 0.3s; }
+        /* === ✅ 任务列表 === */
+        .task-list { display: flex; flex-direction: column; gap: 12px; min-height: 100px; }
         
         .task-item {
             background: white; border-radius: 16px; padding: 15px;
             display: flex; align-items: center; gap: 12px;
             box-shadow: 0 4px 6px rgba(0,0,0,0.02);
             border: 2px solid transparent;
-            transition: all 0.3s ease; /* 增加过渡动画 */
+            transition: all 0.4s ease; /* 流畅动画 */
             position: relative; overflow: hidden;
-            touch-action: pan-y; 
         }
 
         .sortable-ghost { opacity: 0.5; background: #f0f0f0; border: 2px dashed #ccc; }
-        .sortable-drag { background: #fff; transform: scale(1.05); box-shadow: 0 10px 20px rgba(0,0,0,0.1); }
-
-        .drag-handle {
-            color: #d1d5db; cursor: grab; padding: 5px;
-            font-size: 1.2rem; line-height: 1;
-            display: flex; flex-direction: column; justify-content: center;
-        }
-        .drag-handle:active { cursor: grabbing; color: var(--primary); }
-
-        .task-item.done { border-color: var(--accent); background: var(--done-bg); opacity: 0.8; }
+        .drag-handle { color: #d1d5db; cursor: grab; padding: 5px; font-size: 1.2rem; display: flex; align-items: center; }
+        
+        .task-item.done { border-color: var(--accent); background: var(--done-bg); opacity: 0.85; }
         
         .check-box {
             width: 28px; height: 28px; border: 3px solid #ddd;
@@ -123,28 +125,41 @@
             display: flex; justify-content: center; align-items: center;
             transition: 0.3s; cursor: pointer;
         }
-        .task-item.done .check-box {
-            background: var(--accent); border-color: var(--accent);
-            transform: scale(1.1);
-        }
+        .task-item.done .check-box { background: var(--accent); border-color: var(--accent); transform: scale(1.1); }
         .check-box::after { content: '✔'; color: white; font-weight: bold; font-size: 14px; display: none; }
         .task-item.done .check-box::after { display: block; }
 
         .task-text { flex: 1; font-size: 1.1rem; font-weight: 600; color: var(--text); transition: 0.3s; cursor: pointer; }
         .task-item.done .task-text { text-decoration: line-through; color: #aaa; }
         
-        .star-icon { font-size: 1.2rem; filter: grayscale(100%); opacity: 0.3; transition: 0.3s; }
-        .task-item.done .star-icon { filter: grayscale(0%); opacity: 1; transform: rotate(15deg) scale(1.2); }
-
         .btn-del {
             background: #ffe2e2; color: #ff6b6b; border: none;
             width: 32px; height: 32px; border-radius: 8px;
-            font-size: 1rem; cursor: pointer;
-            display: flex; justify-content: center; align-items: center;
-            margin-left: 5px;
+            cursor: pointer; display: flex; justify-content: center; align-items: center;
         }
 
-        /* === ➕ 添加区 === */
+        /* === 📖 心得日记区 === */
+        .diary-section {
+            background: white; border-radius: 16px; padding: 20px;
+            border: 2px solid #fff4e6;
+            box-shadow: 0 4px 10px rgba(0,0,0,0.03);
+            position: relative;
+        }
+        .diary-title {
+            font-size: 1rem; color: #ffbc7d; margin-bottom: 10px; font-weight: bold;
+            display: flex; align-items: center; gap: 5px;
+        }
+        .diary-input {
+            width: 100%; height: 80px; border: none; outline: none;
+            background: #fffcf5; padding: 10px; border-radius: 10px;
+            font-size: 1rem; color: #666; resize: none;
+            font-family: inherit; line-height: 1.5;
+            background-image: linear-gradient(transparent 95%, #ffe2e2 95%);
+            background-size: 100% 1.5rem; /* 信纸线条效果 */
+        }
+        .diary-input::placeholder { color: #dcdcdc; }
+
+        /* === ➕ 底部添加栏 === */
         .add-area {
             background: white; padding: 10px; border-radius: 16px;
             display: flex; gap: 10px;
@@ -163,32 +178,48 @@
             font-weight: bold; font-size: 1rem; cursor: pointer;
         }
 
-        /* === 🏆 胜利弹窗 === */
+        /* === 📅 日历弹窗 === */
         .modal-overlay {
             position: fixed; top: 0; left: 0; width: 100%; height: 100%;
-            background: rgba(0,0,0,0.6); backdrop-filter: blur(5px);
+            background: rgba(0,0,0,0.5); backdrop-filter: blur(3px);
             z-index: 100; display: none; justify-content: center; align-items: center;
-            animation: fadeIn 0.3s;
+            animation: fadeIn 0.2s;
         }
-        .modal-card {
-            background: white; width: 85%; max-width: 400px;
-            border-radius: 24px; padding: 30px; text-align: center;
-            box-shadow: 0 20px 50px rgba(0,0,0,0.3);
-            animation: popUp 0.5s; position: relative; border: 4px solid #fff;
+        .calendar-card {
+            background: white; width: 90%; max-width: 380px;
+            border-radius: 20px; padding: 20px;
+            box-shadow: 0 20px 50px rgba(0,0,0,0.2);
+            animation: slideUp 0.3s;
         }
-        .modal-emoji { font-size: 4rem; margin-bottom: 15px; display: block; animation: bounce 2s infinite; }
-        .modal-title { font-size: 1.5rem; color: var(--primary-dark); margin-bottom: 10px; }
-        .modal-quote { font-size: 1.1rem; color: #666; margin-bottom: 25px; line-height: 1.6; }
-        .btn-close {
-            background: linear-gradient(90deg, #84fab0 0%, #8fd3f4 100%);
-            color: #054f48; border: none; padding: 12px 30px; border-radius: 50px;
-            font-size: 1.1rem; font-weight: bold; cursor: pointer;
-            box-shadow: 0 5px 15px rgba(132, 250, 176, 0.4);
+        .cal-header {
+            display: flex; justify-content: space-between; align-items: center; margin-bottom: 15px;
         }
+        .cal-title { font-size: 1.2rem; font-weight: bold; color: var(--text); }
+        .cal-btn { background: none; border: none; font-size: 1.2rem; cursor: pointer; padding: 5px 10px; }
+        
+        .cal-grid { display: grid; grid-template-columns: repeat(7, 1fr); gap: 5px; text-align: center; }
+        .cal-cell {
+            padding: 8px 0; font-size: 0.9rem; border-radius: 50%; cursor: pointer; position: relative;
+        }
+        .cal-cell.today { background: #ffe2e2; color: var(--primary-dark); font-weight: bold; }
+        .cal-cell.selected { background: var(--primary); color: white; box-shadow: 0 4px 10px rgba(255,154,158,0.4); }
+        .cal-cell.empty { pointer-events: none; }
+        
+        /* 日历上的状态点 */
+        .dot {
+            width: 5px; height: 5px; border-radius: 50%;
+            position: absolute; bottom: 4px; left: 50%; transform: translateX(-50%);
+        }
+        .dot.green { background: #84fab0; } /* 全完成 */
+        .dot.orange { background: #ffbc7d; } /* 未完成 */
 
-        @keyframes popUp { from { transform: scale(0.5); opacity: 0; } to { transform: scale(1); opacity: 1; } }
-        @keyframes bounce { 0%, 100% { transform: translateY(0); } 50% { transform: translateY(-10px); } }
+        /* 胜利动画 */
+        .victory-modal-content { text-align: center; color: var(--text); padding: 20px; }
+        .victory-emoji { font-size: 4rem; display: block; margin-bottom: 10px; animation: bounce 2s infinite; }
+        
         @keyframes fadeIn { from { opacity: 0; } to { opacity: 1; } }
+        @keyframes slideUp { from { transform: translateY(20px); opacity: 0; } to { transform: translateY(0); opacity: 1; } }
+        @keyframes bounce { 0%, 100% { transform: translateY(0); } 50% { transform: translateY(-10px); } }
         .confetti { position: fixed; width: 10px; height: 10px; top: -10px; z-index: 99; animation: fall linear forwards; }
         @keyframes fall { to { transform: translateY(100vh) rotate(720deg); } }
 
@@ -199,10 +230,15 @@
     <div class="container">
         <!-- 头部 -->
         <div class="header-card">
-            <div class="cloud c1"></div>
-            <div class="cloud c2"></div>
-            <h1 id="appTitle">✨ 闪闪发光的一天</h1>
-            <div class="date-badge" id="dateDisplay">加载中...</div>
+            <div class="header-top-row">
+                <div class="title-area">
+                    <h1 id="appTitle">✨ 闪闪发光的一天</h1>
+                    <div class="date-badge" id="dateDisplay">...</div>
+                    <button id="btnBackToday" class="btn-today-return" onclick="goToToday()">🔙 回到今天</button>
+                </div>
+                <!-- 日历按钮 -->
+                <button class="btn-calendar" onclick="openCalendar()">📅</button>
+            </div>
         </div>
 
         <!-- 进度条 -->
@@ -215,28 +251,50 @@
         <div class="task-list" id="taskList">
             <!-- JS 渲染内容 -->
         </div>
+
+        <!-- 📖 心得日记 -->
+        <div class="diary-section">
+            <div class="diary-title">📝 每日心得</div>
+            <textarea id="diaryInput" class="diary-input" placeholder="今天发生了什么开心的事？写下来吧..." oninput="saveDiary()"></textarea>
+        </div>
     </div>
 
-    <!-- 底部添加栏 -->
-    <div class="add-area">
-        <input type="text" id="newTaskInput" class="add-input" placeholder="添加新任务 (如: 练琴30分钟)...">
+    <!-- 底部添加栏 (只有今天是可用的，查看历史时隐藏或禁用) -->
+    <div class="add-area" id="addArea">
+        <input type="text" id="newTaskInput" class="add-input" placeholder="添加新任务...">
         <button class="btn-add" onclick="addTask()">添加</button>
     </div>
 
-    <!-- 胜利弹窗 -->
-    <div class="modal-overlay" id="victoryModal" onclick="closeModal()">
-        <div class="modal-card" onclick="event.stopPropagation()">
-            <span class="modal-emoji" id="modalEmoji">🎉</span>
-            <h2 class="modal-title" id="modalTitle">太棒啦！</h2>
-            <p class="modal-quote" id="modalQuote">鼓励语加载中...</p>
-            <button class="btn-close" onclick="closeModal()">我做到啦！💖</button>
+    <!-- 📅 日历弹窗 -->
+    <div class="modal-overlay" id="calendarModal" onclick="closeCalendar()">
+        <div class="calendar-card" onclick="event.stopPropagation()">
+            <div class="cal-header">
+                <button class="cal-btn" onclick="changeMonth(-1)">❮</button>
+                <div class="cal-title" id="calTitle">2023年 10月</div>
+                <button class="cal-btn" onclick="changeMonth(1)">❯</button>
+            </div>
+            <div class="cal-grid" style="font-size:0.8rem; color:#aaa; margin-bottom:5px;">
+                <div>日</div><div>一</div><div>二</div><div>三</div><div>四</div><div>五</div><div>六</div>
+            </div>
+            <div class="cal-grid" id="calGrid"></div>
+        </div>
+    </div>
+
+    <!-- 🏆 胜利弹窗 -->
+    <div class="modal-overlay" id="victoryModal" onclick="closeVictory()">
+        <div class="calendar-card victory-modal-content" onclick="event.stopPropagation()">
+            <span class="victory-emoji">🎉</span>
+            <h2 id="victoryTitle" style="color:#ff6b6b; margin-bottom:10px;">太棒啦！</h2>
+            <p id="victoryQuote" style="color:#666; margin-bottom:20px;">任务全搞定！</p>
+            <button class="btn-add" style="width:100%" onclick="closeVictory()">收下奖励 💖</button>
         </div>
     </div>
 
     <script>
-        const LS_KEY_TASKS = 'sparkle_tasks';
-        const LS_KEY_DATE = 'sparkle_last_date';
+        // === 🛠️ 核心数据管理 ===
+        const LS_KEY = 'sparkle_diary_data_v1';
         
+        // 默认任务模版
         const defaultTasks = [
             { id: 1, text: "认真吃早餐 🥛", done: false },
             { id: 2, text: "在学校专心听讲 🏫", done: false },
@@ -245,63 +303,175 @@
             { id: 5, text: "按时睡觉不磨蹭 🌙", done: false }
         ];
 
-        // === 📅 魔法标题库 (随机显示) ===
-        const titleList = [
-            "✨ 闪闪发光的一天",
-            "🌈 把今天变成彩虹色",
-            "🚀 开启元气满满的一天",
-            "👑 小公主的冒险日记",
-            "🌟 今天要去收集星星",
-            "🎈 快乐出发！GoGo！",
-            "🌻 像向日葵一样生长",
-            "🎡 今天的魔法开始啦",
-            "🐾 踏出勇敢的一小步",
-            "🍬 给生活加一点甜",
-            "🧸 快乐去收割任务吧",
-            "🎨 今天是画出来的"
-        ];
+        // 随机标题库
+        const titleList = ["✨ 闪闪发光的一天", "🌈 把今天变成彩虹色", "🚀 开启元气满满的一天", "🌟 今天要去收集星星", "🎈 快乐出发！GoGo！"];
 
-        let tasks = [];
+        // 全局变量
+        let allData = {}; // 结构: { "2023-10-20": { tasks: [], note: "" } }
+        let viewDateStr = ""; // 当前正在查阅的日期 "YYYY-MM-DD"
+        let todayStr = "";    // 今天的日期 "YYYY-MM-DD"
         let sortableInstance = null;
 
-        const quotes = {
-            hero: ["哇！今天的任务怪兽全被你打败了！🦸‍♀️", "滴！勤奋能量已充满！🔋", "困难被你踩在脚下啦！✨", "你是魔法少女本人吧？🪄", "为战胜偷懒的自己骄傲！😈"],
-            reward: ["去冰箱找找好吃的奖励！🍦", "有资格躺沙发发呆十分钟！🛋️", "去抱抱爸爸妈妈吧！👨‍👩‍👧", "该去看一集动画片了！📺", "快去玩最喜欢的玩具吧！🧸"],
-            cozy: ["今天的你比昨天更优秀。👑", "把烦恼关门外，做个美梦。🌙", "看到绿色的勾勾心里暖暖的。❤️", "星星在夸你做得不错呢！🌟", "你像小太阳一样亮堂堂！☀️"],
-            vision: ["向大梦想迈近了一小步！👣", "又多获得了一把知识钥匙！🔑", "坚持就是最酷的超能力！💪", "努力会变成漂亮的皇冠！💎", "正在走向更棒的自己！🌈"]
-        };
+        // 日历变量
+        let calYear, calMonth; 
 
+        // === 🚀 初始化 ===
         function init() {
-            // 1. 设置日期
-            const now = new Date();
-            const dateStr = now.toLocaleDateString('zh-CN', { month: 'long', day: 'numeric', weekday: 'long' });
-            document.getElementById('dateDisplay').textContent = dateStr;
-
-            // 2. 设置随机标题
-            const randomTitle = titleList[Math.floor(Math.random() * titleList.length)];
-            document.getElementById('appTitle').textContent = randomTitle;
-            document.title = randomTitle;
-
-            // 3. 智能重置检查
-            const savedDate = localStorage.getItem(LS_KEY_DATE);
-            const todayStr = now.toDateString();
-            const savedTasks = localStorage.getItem(LS_KEY_TASKS);
-            
-            if (savedTasks) {
-                tasks = JSON.parse(savedTasks);
-            } else {
-                tasks = JSON.parse(JSON.stringify(defaultTasks));
+            // 1. 读取本地总数据
+            const saved = localStorage.getItem(LS_KEY);
+            if (saved) {
+                allData = JSON.parse(saved);
             }
 
-            // 如果是新的一天，重置任务状态
-            if (savedDate !== todayStr) {
-                tasks.forEach(t => t.done = false);
-                localStorage.setItem(LS_KEY_DATE, todayStr);
+            // 2. 确定今天
+            const now = new Date();
+            todayStr = formatDateKey(now);
+            viewDateStr = todayStr; // 默认看今天
+            calYear = now.getFullYear();
+            calMonth = now.getMonth();
+
+            // 3. 检查今天是否有数据，没有则初始化
+            if (!allData[todayStr]) {
+                allData[todayStr] = {
+                    tasks: JSON.parse(JSON.stringify(defaultTasks)),
+                    note: ""
+                };
                 saveData();
             }
 
-            render();
+            // 4. 设置随机标题
+            document.getElementById('appTitle').textContent = titleList[Math.floor(Math.random() * titleList.length)];
+
+            renderView();
             initSortable();
+        }
+
+        // 格式化日期为 YYYY-MM-DD
+        function formatDateKey(date) {
+            const y = date.getFullYear();
+            const m = String(date.getMonth() + 1).padStart(2, '0');
+            const d = String(date.getDate()).padStart(2, '0');
+            return `${y}-${m}-${d}`;
+        }
+
+        // === 🖥️ 渲染主界面 ===
+        function renderView() {
+            const data = allData[viewDateStr] || { tasks: [], note: "" };
+            
+            // 1. 更新顶部日期显示
+            const dateObj = new Date(viewDateStr);
+            const dateText = dateObj.toLocaleDateString('zh-CN', { month: 'long', day: 'numeric', weekday: 'long' });
+            document.getElementById('dateDisplay').textContent = dateText;
+
+            // 2. 控制“回到今天”按钮和输入框
+            const isToday = (viewDateStr === todayStr);
+            document.getElementById('btnBackToday').style.display = isToday ? 'none' : 'inline-block';
+            document.getElementById('addArea').style.display = isToday ? 'flex' : 'none'; // 只有今天能加任务
+            
+            // 历史日记是否只读？这里设定为随时可补写，不禁用 textarea
+            document.getElementById('diaryInput').value = data.note || "";
+
+            // 3. 渲染任务列表
+            const listEl = document.getElementById('taskList');
+            listEl.innerHTML = '';
+            let doneCount = 0;
+            
+            data.tasks.forEach(task => {
+                if(task.done) doneCount++;
+                const div = document.createElement('div');
+                div.className = `task-item ${task.done ? 'done' : ''}`;
+                
+                // 只有今天才能操作删除/拖动/打钩，历史记录建议只读，或者你可以放开限制
+                // 为了简单，这里允许历史补打卡，但拖动只在今天开启
+                const isDrag = isToday ? '<div class="drag-handle">⋮⋮</div>' : '';
+                const delBtn = isToday ? `<button class="btn-del" onclick="deleteTask(${task.id}, event)">🗑️</button>` : '';
+
+                div.innerHTML = `
+                    ${isDrag}
+                    <div class="check-box" onclick="toggleTask(${task.id})"></div>
+                    <div class="task-text" onclick="toggleTask(${task.id})">${task.text}</div>
+                    ${delBtn}
+                `;
+                listEl.appendChild(div);
+            });
+
+            // 4. 进度条
+            const total = data.tasks.length;
+            const percent = total === 0 ? 0 : Math.round((doneCount / total) * 100);
+            document.getElementById('progressBar').style.width = percent + '%';
+            document.getElementById('progressText').textContent = percent + '%';
+
+            // 5. Sortable 状态
+            if(sortableInstance) {
+                sortableInstance.option("disabled", !isToday); // 历史记录不可拖动排序
+            }
+        }
+
+        // === 🕹️ 交互逻辑 ===
+
+        // 切换任务状态 (核心下沉逻辑)
+        function toggleTask(id) {
+            const data = allData[viewDateStr];
+            const task = data.tasks.find(t => t.id === id);
+            if (!task) return;
+
+            task.done = !task.done;
+            saveData();
+            renderView(); // 立即刷新显示状态
+
+            // 延迟执行排序动画
+            setTimeout(() => {
+                const index = data.tasks.findIndex(t => t.id === id);
+                if (index === -1) return;
+                
+                const [moved] = data.tasks.splice(index, 1);
+                if (moved.done) {
+                    data.tasks.push(moved); // 完成下沉
+                } else {
+                    data.tasks.unshift(moved); // 取消置顶
+                }
+                saveData();
+                renderView();
+
+                // 只有今天且全部完成时触发庆祝
+                if (viewDateStr === todayStr && moved.done && data.tasks.every(t => t.done) && data.tasks.length > 0) {
+                    showVictory();
+                }
+            }, 400);
+        }
+
+        function addTask() {
+            const input = document.getElementById('newTaskInput');
+            const val = input.value.trim();
+            if (!val) return;
+            
+            allData[todayStr].tasks.unshift({ id: Date.now(), text: val, done: false });
+            input.value = '';
+            saveData();
+            renderView();
+            window.scrollTo({ top: 0, behavior: 'smooth' });
+        }
+
+        function deleteTask(id, event) {
+            event.stopPropagation();
+            if (confirm("删除这个任务吗？")) {
+                allData[todayStr].tasks = allData[todayStr].tasks.filter(t => t.id !== id);
+                saveData();
+                renderView();
+            }
+        }
+
+        function saveDiary() {
+            const val = document.getElementById('diaryInput').value;
+            if (!allData[viewDateStr]) {
+                allData[viewDateStr] = { tasks: [], note: "" };
+            }
+            allData[viewDateStr].note = val;
+            saveData();
+        }
+
+        function saveData() {
+            localStorage.setItem(LS_KEY, JSON.stringify(allData));
         }
 
         function initSortable() {
@@ -310,146 +480,100 @@
                 animation: 150,
                 handle: '.drag-handle',
                 ghostClass: 'sortable-ghost',
-                dragClass: 'sortable-drag',
-                delay: 100,
-                delayOnTouchOnly: true,
                 onEnd: function (evt) {
-                    const item = tasks.splice(evt.oldIndex, 1)[0];
-                    tasks.splice(evt.newIndex, 0, item);
+                    if(viewDateStr !== todayStr) return; // 只有今天能排序
+                    const item = allData[todayStr].tasks.splice(evt.oldIndex, 1)[0];
+                    allData[todayStr].tasks.splice(evt.newIndex, 0, item);
                     saveData();
                 }
             });
         }
 
-        function render() {
-            const listEl = document.getElementById('taskList');
-            listEl.innerHTML = '';
-            let doneCount = 0;
+        // === 📅 日历逻辑 ===
+        function openCalendar() {
+            document.getElementById('calendarModal').style.display = 'flex';
+            renderCalendar();
+        }
+        function closeCalendar() {
+            document.getElementById('calendarModal').style.display = 'none';
+        }
+        function changeMonth(delta) {
+            calMonth += delta;
+            if (calMonth > 11) { calMonth = 0; calYear++; }
+            if (calMonth < 0) { calMonth = 11; calYear--; }
+            renderCalendar();
+        }
 
-            tasks.forEach(task => {
-                if (task.done) doneCount++;
+        function renderCalendar() {
+            const grid = document.getElementById('calGrid');
+            document.getElementById('calTitle').textContent = `${calYear}年 ${calMonth + 1}月`;
+            grid.innerHTML = '';
+
+            const firstDay = new Date(calYear, calMonth, 1).getDay();
+            const daysInMonth = new Date(calYear, calMonth + 1, 0).getDate();
+
+            // 空白填充
+            for (let i = 0; i < firstDay; i++) {
                 const div = document.createElement('div');
-                div.className = `task-item ${task.done ? 'done' : ''}`;
-                
-                div.innerHTML = `
-                    <div class="drag-handle">⋮⋮</div>
-                    <div class="check-box" onclick="toggleTask(${task.id})"></div>
-                    <div class="task-text" onclick="toggleTask(${task.id})">${task.text}</div>
-                    <div class="star-icon">🌟</div>
-                    <button class="btn-del" onclick="deleteTask(${task.id}, event)">🗑️</button>
-                `;
-                listEl.appendChild(div);
-            });
+                div.className = 'cal-cell empty';
+                grid.appendChild(div);
+            }
 
-            const total = tasks.length;
-            const percent = total === 0 ? 0 : Math.round((doneCount / total) * 100);
-            document.getElementById('progressBar').style.width = percent + '%';
-            document.getElementById('progressText').textContent = percent + '%';
-        }
+            // 日期生成
+            for (let d = 1; d <= daysInMonth; d++) {
+                const dateKey = `${calYear}-${String(calMonth+1).padStart(2,'0')}-${String(d).padStart(2,'0')}`;
+                const div = document.createElement('div');
+                div.className = 'cal-cell';
+                div.textContent = d;
 
-        // === 核心逻辑修改：点击任务后的排序行为 ===
-        function toggleTask(id) {
-            const task = tasks.find(t => t.id === id);
-            if (!task) return;
+                // 样式判断
+                if (dateKey === todayStr) div.classList.add('today');
+                if (dateKey === viewDateStr) div.classList.add('selected');
 
-            // 1. 改变状态
-            task.done = !task.done;
-            
-            // 2. 原地刷新一次 (让用户看到打钩动画)
-            render(); 
-            saveData();
-
-            // 3. 延迟一小会儿后执行移动逻辑
-            setTimeout(() => {
-                const index = tasks.findIndex(t => t.id === id);
-                if (index === -1) return;
-
-                // 从数组中取出
-                const [movedTask] = tasks.splice(index, 1);
-
-                if (movedTask.done) {
-                    // 如果完成了 -> 放到数组最后 (下沉)
-                    // 这样后完成的会排在更下面，保留了下沉顺序
-                    tasks.push(movedTask);
-                } else {
-                    // 如果取消完成 -> 放到数组最前 (上浮)
-                    // 这样它就变成了“下一个该完成的项目”
-                    tasks.unshift(movedTask);
+                // 数据点逻辑
+                const dayData = allData[dateKey];
+                if (dayData && dayData.tasks.length > 0) {
+                    const allDone = dayData.tasks.every(t => t.done);
+                    const dot = document.createElement('div');
+                    dot.className = `dot ${allDone ? 'green' : 'orange'}`;
+                    div.appendChild(dot);
                 }
 
-                saveData();
-                render(); // 再次渲染，位置改变
-
-                // 检查胜利
-                if (movedTask.done && tasks.every(t => t.done) && tasks.length > 0) {
-                    setTimeout(showVictoryModal, 200);
-                }
-            }, 400); // 400ms 延迟配合 CSS 动画
-        }
-
-        function addTask() {
-            const input = document.getElementById('newTaskInput');
-            const val = input.value.trim();
-            if (!val) return;
-            
-            // 修改：新任务添加到数组最前面 (unshift)，作为下一个优先任务
-            tasks.unshift({ id: Date.now(), text: val, done: false });
-            
-            input.value = '';
-            saveData();
-            render();
-            // 滚动到顶部查看新任务
-            window.scrollTo({ top: 0, behavior: 'smooth' });
-        }
-
-        function deleteTask(id, event) {
-            event.stopPropagation();
-            if (confirm("确定要删除这个任务吗？")) {
-                tasks = tasks.filter(t => t.id !== id);
-                saveData();
-                render();
+                div.onclick = () => {
+                    viewDateStr = dateKey;
+                    // 如果点击的是没有数据的未来或过去某天，是否要创建空数据？
+                    // 这里仅渲染视图，如果用户写日记会自动创建数据
+                    closeCalendar();
+                    renderView();
+                };
+                grid.appendChild(div);
             }
         }
 
-        function saveData() {
-            localStorage.setItem(LS_KEY_TASKS, JSON.stringify(tasks));
+        function goToToday() {
+            viewDateStr = todayStr;
+            renderView();
         }
 
-        function showVictoryModal() {
+        // === 🎉 杂项 ===
+        function showVictory() {
             const modal = document.getElementById('victoryModal');
-            const titleEl = document.getElementById('modalTitle');
-            const quoteEl = document.getElementById('modalQuote');
-            const emojiEl = document.getElementById('modalEmoji');
-            const categories = ['hero', 'reward', 'cozy', 'vision'];
-            const randomCat = categories[Math.floor(Math.random() * categories.length)];
-            const quoteList = quotes[randomCat];
-            const randomQuote = quoteList[Math.floor(Math.random() * quoteList.length)];
-
-            quoteEl.textContent = randomQuote;
-            if(randomCat === 'hero') { titleEl.innerText = "挑战成功！⚔️"; emojiEl.innerText = "🏆"; }
-            else if(randomCat === 'reward') { titleEl.innerText = "太棒啦！🎁"; emojiEl.innerText = "🍬"; }
-            else if(randomCat === 'cozy') { titleEl.innerText = "温暖达成！💖"; emojiEl.innerText = "🥰"; }
-            else { titleEl.innerText = "未来可期！🚀"; emojiEl.innerText = "🌈"; }
-
             modal.style.display = 'flex';
             createConfetti();
         }
-
-        function closeModal() {
+        function closeVictory() {
             document.getElementById('victoryModal').style.display = 'none';
             document.querySelectorAll('.confetti').forEach(el => el.remove());
         }
-
         function createConfetti() {
-            const colors = ['#ff9a9e', '#a18cd1', '#fbc2eb', '#84fab0', '#fccb90'];
+            const colors = ['#ff9a9e', '#a18cd1', '#fbc2eb', '#84fab0'];
             for (let i = 0; i < 50; i++) {
-                const confetti = document.createElement('div');
-                confetti.classList.add('confetti');
-                confetti.style.left = Math.random() * 100 + 'vw';
-                confetti.style.background = colors[Math.floor(Math.random() * colors.length)];
-                confetti.style.animationDuration = (Math.random() * 2 + 2) + 's';
-                confetti.style.opacity = Math.random();
-                document.body.appendChild(confetti);
+                const c = document.createElement('div');
+                c.className = 'confetti';
+                c.style.left = Math.random() * 100 + 'vw';
+                c.style.background = colors[Math.floor(Math.random()*colors.length)];
+                c.style.animationDuration = (Math.random()*2+2)+'s';
+                document.body.appendChild(c);
             }
         }
 
@@ -457,7 +581,9 @@
             if (e.key === 'Enter') addTask();
         });
 
+        // 启动
         init();
+
     </script>
 </body>
 </html>
