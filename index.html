@@ -66,7 +66,7 @@
             font-size: 1.8rem; 
             margin-bottom: 5px; 
             text-shadow: 1px 1px 3px rgba(0,0,0,0.1); 
-            min-height: 2.4rem; /* 防止标题切换时抖动 */
+            min-height: 2.4rem; 
         }
         
         .date-badge {
@@ -93,14 +93,14 @@
         }
 
         /* === ✅ 任务列表 (支持拖动) === */
-        .task-list { display: flex; flex-direction: column; gap: 12px; }
+        .task-list { display: flex; flex-direction: column; gap: 12px; transition: all 0.3s; }
         
         .task-item {
             background: white; border-radius: 16px; padding: 15px;
             display: flex; align-items: center; gap: 12px;
             box-shadow: 0 4px 6px rgba(0,0,0,0.02);
             border: 2px solid transparent;
-            transition: transform 0.2s, background 0.2s;
+            transition: all 0.3s ease; /* 增加过渡动画 */
             position: relative; overflow: hidden;
             touch-action: pan-y; 
         }
@@ -115,7 +115,7 @@
         }
         .drag-handle:active { cursor: grabbing; color: var(--primary); }
 
-        .task-item.done { border-color: var(--accent); background: var(--done-bg); }
+        .task-item.done { border-color: var(--accent); background: var(--done-bg); opacity: 0.8; }
         
         .check-box {
             width: 28px; height: 28px; border: 3px solid #ddd;
@@ -201,7 +201,6 @@
         <div class="header-card">
             <div class="cloud c1"></div>
             <div class="cloud c2"></div>
-            <!-- ID变更为 appTitle 用来动态修改 -->
             <h1 id="appTitle">✨ 闪闪发光的一天</h1>
             <div class="date-badge" id="dateDisplay">加载中...</div>
         </div>
@@ -278,10 +277,9 @@
             const dateStr = now.toLocaleDateString('zh-CN', { month: 'long', day: 'numeric', weekday: 'long' });
             document.getElementById('dateDisplay').textContent = dateStr;
 
-            // 2. 设置随机标题 (每次刷新都变)
+            // 2. 设置随机标题
             const randomTitle = titleList[Math.floor(Math.random() * titleList.length)];
             document.getElementById('appTitle').textContent = randomTitle;
-            // 顺便改一下浏览器标签页标题
             document.title = randomTitle;
 
             // 3. 智能重置检查
@@ -295,6 +293,7 @@
                 tasks = JSON.parse(JSON.stringify(defaultTasks));
             }
 
+            // 如果是新的一天，重置任务状态
             if (savedDate !== todayStr) {
                 tasks.forEach(t => t.done = false);
                 localStorage.setItem(LS_KEY_DATE, todayStr);
@@ -331,7 +330,6 @@
                 if (task.done) doneCount++;
                 const div = document.createElement('div');
                 div.className = `task-item ${task.done ? 'done' : ''}`;
-                const toggleFn = (e) => toggleTask(task.id, e);
                 
                 div.innerHTML = `
                     <div class="drag-handle">⋮⋮</div>
@@ -349,27 +347,59 @@
             document.getElementById('progressText').textContent = percent + '%';
         }
 
+        // === 核心逻辑修改：点击任务后的排序行为 ===
         function toggleTask(id) {
             const task = tasks.find(t => t.id === id);
-            if (task) {
-                task.done = !task.done;
-                saveData();
-                render();
-                if (task.done && tasks.every(t => t.done) && tasks.length > 0) {
-                    setTimeout(showVictoryModal, 500);
+            if (!task) return;
+
+            // 1. 改变状态
+            task.done = !task.done;
+            
+            // 2. 原地刷新一次 (让用户看到打钩动画)
+            render(); 
+            saveData();
+
+            // 3. 延迟一小会儿后执行移动逻辑
+            setTimeout(() => {
+                const index = tasks.findIndex(t => t.id === id);
+                if (index === -1) return;
+
+                // 从数组中取出
+                const [movedTask] = tasks.splice(index, 1);
+
+                if (movedTask.done) {
+                    // 如果完成了 -> 放到数组最后 (下沉)
+                    // 这样后完成的会排在更下面，保留了下沉顺序
+                    tasks.push(movedTask);
+                } else {
+                    // 如果取消完成 -> 放到数组最前 (上浮)
+                    // 这样它就变成了“下一个该完成的项目”
+                    tasks.unshift(movedTask);
                 }
-            }
+
+                saveData();
+                render(); // 再次渲染，位置改变
+
+                // 检查胜利
+                if (movedTask.done && tasks.every(t => t.done) && tasks.length > 0) {
+                    setTimeout(showVictoryModal, 200);
+                }
+            }, 400); // 400ms 延迟配合 CSS 动画
         }
 
         function addTask() {
             const input = document.getElementById('newTaskInput');
             const val = input.value.trim();
             if (!val) return;
-            tasks.push({ id: Date.now(), text: val, done: false });
+            
+            // 修改：新任务添加到数组最前面 (unshift)，作为下一个优先任务
+            tasks.unshift({ id: Date.now(), text: val, done: false });
+            
             input.value = '';
             saveData();
             render();
-            setTimeout(() => window.scrollTo(0, document.body.scrollHeight), 100);
+            // 滚动到顶部查看新任务
+            window.scrollTo({ top: 0, behavior: 'smooth' });
         }
 
         function deleteTask(id, event) {
