@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
-    <title>我的专属日程手账</title>
+    <title>我的专属日程手账 (自动继承版)</title>
     <!-- 引入拖动库 SortableJS -->
     <script src="https://cdnjs.cloudflare.com/ajax/libs/Sortable/1.15.0/Sortable.min.js"></script>
     <style>
@@ -292,10 +292,10 @@
 
     <script>
         // === 🛠️ 核心数据管理 ===
-        const LS_KEY = 'sparkle_diary_data_v1';
+        const LS_KEY = 'sparkle_diary_data_v2_inherited'; // 修改key以防旧数据冲突
         
-        // 默认任务模版
-        const defaultTasks = [
+        // 初始默认模版 (只在没有任何历史记录的第一次使用)
+        const initialTemplate = [
             { id: 1, text: "认真吃早餐 🥛", done: false },
             { id: 2, text: "在学校专心听讲 🏫", done: false },
             { id: 3, text: "完成今天的作业 📚", done: false },
@@ -307,12 +307,11 @@
         const titleList = ["✨ 闪闪发光的一天", "🌈 把今天变成彩虹色", "🚀 开启元气满满的一天", "🌟 今天要去收集星星", "🎈 快乐出发！GoGo！"];
 
         // 全局变量
-        let allData = {}; // 结构: { "2023-10-20": { tasks: [], note: "" } }
-        let viewDateStr = ""; // 当前正在查阅的日期 "YYYY-MM-DD"
-        let todayStr = "";    // 今天的日期 "YYYY-MM-DD"
+        let allData = {}; 
+        let viewDateStr = ""; 
+        let todayStr = "";    
         let sortableInstance = null;
 
-        // 日历变量
         let calYear, calMonth; 
 
         // === 🚀 初始化 ===
@@ -326,14 +325,16 @@
             // 2. 确定今天
             const now = new Date();
             todayStr = formatDateKey(now);
-            viewDateStr = todayStr; // 默认看今天
+            viewDateStr = todayStr; 
             calYear = now.getFullYear();
             calMonth = now.getMonth();
 
-            // 3. 检查今天是否有数据，没有则初始化
+            // 3. 【核心修改】检查今天是否有数据
+            // 如果今天没有数据，则尝试从历史中“遗传”
             if (!allData[todayStr]) {
+                const inheritedTasks = getTasksFromHistory();
                 allData[todayStr] = {
-                    tasks: JSON.parse(JSON.stringify(defaultTasks)),
+                    tasks: inheritedTasks, // 使用遗传下来的列表
                     note: ""
                 };
                 saveData();
@@ -344,6 +345,37 @@
 
             renderView();
             initSortable();
+        }
+
+        /**
+         * 🧬 遗传算法：获取历史任务列表
+         * 逻辑：找到比今天早的最近一天的记录，复制其任务列表，但把完成状态重置为false。
+         * 如果没有历史记录（第一次用），则使用默认模版。
+         */
+        function getTasksFromHistory() {
+            // 获取所有日期键并排序
+            const dates = Object.keys(allData).sort();
+            
+            // 筛选出所有在这个日期之前的记录
+            const pastDates = dates.filter(d => d < todayStr);
+
+            if (pastDates.length === 0) {
+                // 如果没有历史记录，返回默认初始模版
+                // 深拷贝一份，防止引用修改
+                return JSON.parse(JSON.stringify(initialTemplate));
+            }
+
+            // 找到最近的一天
+            const lastDateKey = pastDates[pastDates.length - 1];
+            const lastDayData = allData[lastDateKey];
+
+            // 复制任务，但重置 done 为 false
+            // 这里我们遍历昨天的任务，生成新对象
+            return lastDayData.tasks.map(task => ({
+                id: task.id,       // 保持ID或生成新ID皆可，这里保持ID方便追踪（或可换成 Date.now() + index）
+                text: task.text,   // 继承文字内容
+                done: false        // ❌ 重置状态：新的一天还没做呢
+            }));
         }
 
         // 格式化日期为 YYYY-MM-DD
@@ -366,9 +398,8 @@
             // 2. 控制“回到今天”按钮和输入框
             const isToday = (viewDateStr === todayStr);
             document.getElementById('btnBackToday').style.display = isToday ? 'none' : 'inline-block';
-            document.getElementById('addArea').style.display = isToday ? 'flex' : 'none'; // 只有今天能加任务
+            document.getElementById('addArea').style.display = isToday ? 'flex' : 'none'; 
             
-            // 历史日记是否只读？这里设定为随时可补写，不禁用 textarea
             document.getElementById('diaryInput').value = data.note || "";
 
             // 3. 渲染任务列表
@@ -381,8 +412,6 @@
                 const div = document.createElement('div');
                 div.className = `task-item ${task.done ? 'done' : ''}`;
                 
-                // 只有今天才能操作删除/拖动/打钩，历史记录建议只读，或者你可以放开限制
-                // 为了简单，这里允许历史补打卡，但拖动只在今天开启
                 const isDrag = isToday ? '<div class="drag-handle">⋮⋮</div>' : '';
                 const delBtn = isToday ? `<button class="btn-del" onclick="deleteTask(${task.id}, event)">🗑️</button>` : '';
 
@@ -403,13 +432,12 @@
 
             // 5. Sortable 状态
             if(sortableInstance) {
-                sortableInstance.option("disabled", !isToday); // 历史记录不可拖动排序
+                sortableInstance.option("disabled", !isToday); 
             }
         }
 
         // === 🕹️ 交互逻辑 ===
 
-        // 切换任务状态 (核心下沉逻辑)
         function toggleTask(id) {
             const data = allData[viewDateStr];
             const task = data.tasks.find(t => t.id === id);
@@ -417,23 +445,21 @@
 
             task.done = !task.done;
             saveData();
-            renderView(); // 立即刷新显示状态
+            renderView(); 
 
-            // 延迟执行排序动画
             setTimeout(() => {
                 const index = data.tasks.findIndex(t => t.id === id);
                 if (index === -1) return;
                 
                 const [moved] = data.tasks.splice(index, 1);
                 if (moved.done) {
-                    data.tasks.push(moved); // 完成下沉
+                    data.tasks.push(moved); 
                 } else {
-                    data.tasks.unshift(moved); // 取消置顶
+                    data.tasks.unshift(moved); 
                 }
                 saveData();
                 renderView();
 
-                // 只有今天且全部完成时触发庆祝
                 if (viewDateStr === todayStr && moved.done && data.tasks.every(t => t.done) && data.tasks.length > 0) {
                     showVictory();
                 }
@@ -445,6 +471,7 @@
             const val = input.value.trim();
             if (!val) return;
             
+            // 使用时间戳确保唯一ID
             allData[todayStr].tasks.unshift({ id: Date.now(), text: val, done: false });
             input.value = '';
             saveData();
@@ -481,7 +508,7 @@
                 handle: '.drag-handle',
                 ghostClass: 'sortable-ghost',
                 onEnd: function (evt) {
-                    if(viewDateStr !== todayStr) return; // 只有今天能排序
+                    if(viewDateStr !== todayStr) return; 
                     const item = allData[todayStr].tasks.splice(evt.oldIndex, 1)[0];
                     allData[todayStr].tasks.splice(evt.newIndex, 0, item);
                     saveData();
@@ -512,25 +539,21 @@
             const firstDay = new Date(calYear, calMonth, 1).getDay();
             const daysInMonth = new Date(calYear, calMonth + 1, 0).getDate();
 
-            // 空白填充
             for (let i = 0; i < firstDay; i++) {
                 const div = document.createElement('div');
                 div.className = 'cal-cell empty';
                 grid.appendChild(div);
             }
 
-            // 日期生成
             for (let d = 1; d <= daysInMonth; d++) {
                 const dateKey = `${calYear}-${String(calMonth+1).padStart(2,'0')}-${String(d).padStart(2,'0')}`;
                 const div = document.createElement('div');
                 div.className = 'cal-cell';
                 div.textContent = d;
 
-                // 样式判断
                 if (dateKey === todayStr) div.classList.add('today');
                 if (dateKey === viewDateStr) div.classList.add('selected');
 
-                // 数据点逻辑
                 const dayData = allData[dateKey];
                 if (dayData && dayData.tasks.length > 0) {
                     const allDone = dayData.tasks.every(t => t.done);
@@ -541,8 +564,6 @@
 
                 div.onclick = () => {
                     viewDateStr = dateKey;
-                    // 如果点击的是没有数据的未来或过去某天，是否要创建空数据？
-                    // 这里仅渲染视图，如果用户写日记会自动创建数据
                     closeCalendar();
                     renderView();
                 };
@@ -581,7 +602,6 @@
             if (e.key === 'Enter') addTask();
         });
 
-        // 启动
         init();
 
     </script>
