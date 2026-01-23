@@ -2,94 +2,148 @@
 <html lang="zh-CN">
 <head>
     <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>AI 智能日程表 - 核心版</title>
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+    <title>AI 智能日程表</title>
     <style>
         :root {
-            --primary: #2563eb; --bg: #f8fafc; --card: #ffffff;
-            --text: #1e293b; --border: #e2e8f0;
+            --primary: #2563eb; --primary-dark: #1e40af; 
+            --bg: #f8fafc; --card: #ffffff; --text: #334155; --border: #cbd5e1;
+            --success: #16a34a; --danger: #dc2626;
         }
-        * { box-sizing: border-box; font-family: -apple-system, system-ui, sans-serif; }
-        body { background: var(--bg); color: var(--text); margin: 0; padding: 20px; }
-        .container { max-width: 800px; margin: 0 auto; display: flex; flex-direction: column; gap: 20px; }
-        
-        /* 基础组件 */
-        .card { background: var(--card); border-radius: 12px; border: 1px solid var(--border); padding: 20px; box-shadow: 0 1px 3px rgba(0,0,0,0.1); }
-        .header { display: flex; justify-content: space-between; align-items: center; }
-        .btn { padding: 8px 16px; border-radius: 6px; border: none; cursor: pointer; font-weight: 600; transition: 0.2s; }
-        .btn-primary { background: var(--primary); color: white; }
-        
+        * { margin: 0; padding: 0; box-sizing: border-box; -webkit-tap-highlight-color: transparent; }
+        body {
+            font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
+            background: var(--bg); color: var(--text); padding: 15px; min-height: 100vh;
+        }
+        .container { max-width: 900px; margin: 0 auto; display: flex; flex-direction: column; gap: 20px; padding-bottom: 40px; }
+
+        /* 卡片样式 */
+        .card { background: var(--card); border-radius: 16px; box-shadow: 0 4px 6px -1px rgba(0,0,0,0.1); border: 1px solid var(--border); overflow: hidden; }
+        .card-header { padding: 15px 20px; border-bottom: 1px solid var(--border); display: flex; justify-content: space-between; align-items: center; }
+        .card-header h2 { font-size: 1.1rem; font-weight: 700; color: #0f172a; }
+        .card-body { padding: 20px; }
+
+        /* 顶部栏 */
+        .top-bar { background: linear-gradient(135deg, var(--primary), var(--primary-dark)); color: white; padding: 16px 24px; border-radius: 16px; display: flex; justify-content: space-between; align-items: center; box-shadow: 0 4px 10px rgba(37,99,235,0.3); }
+        .user-pill { background: rgba(255,255,255,0.2); padding: 4px 12px; border-radius: 20px; font-size: 0.85rem; backdrop-filter: blur(4px); }
+
         /* AI 输入区 */
-        textarea { width: 100%; height: 80px; padding: 12px; border: 1px solid var(--border); border-radius: 8px; margin-bottom: 10px; resize: none; }
-        .ai-status { font-size: 0.85rem; color: #64748b; margin-top: 5px; }
+        .ai-box { position: relative; border: 2px dashed var(--border); border-radius: 12px; padding: 10px; background: #f8fafc; transition: 0.3s; }
+        .ai-box:focus-within { border-color: var(--primary); background: #fff; }
+        textarea { width: 100%; height: 100px; padding: 10px; border: none; background: transparent; resize: none; outline: none; font-size: 1rem; line-height: 1.5; }
+        .key-input { width: 100%; max-width: 300px; padding: 8px; border-radius: 6px; border: 1px solid var(--border); font-size: 0.8rem; margin-bottom: 10px; }
 
         /* 日历样式 */
-        .calendar-grid { display: grid; grid-template-columns: repeat(7, 1fr); gap: 5px; margin-top: 10px; }
-        .cal-day { border: 1px solid var(--border); min-height: 80px; padding: 5px; font-size: 0.8rem; background: #fff; }
-        .cal-header { text-align: center; font-weight: bold; padding: 10px 0; }
-        .event-tag { background: #dbeafe; color: #1e40af; padding: 2px 4px; border-radius: 3px; margin-top: 2px; font-size: 0.7rem; overflow: hidden; }
+        .calendar-wrapper { user-select: none; }
+        .calendar-header { display: grid; grid-template-columns: repeat(7, 1fr); text-align: center; font-size: 0.8rem; color: #94a3b8; padding: 10px 0; font-weight: 600; }
+        .calendar-grid { display: grid; grid-template-columns: repeat(7, 1fr); gap: 6px; }
+        .cal-day { background: #fff; border: 1px solid var(--border); border-radius: 10px; min-height: 90px; padding: 6px; display: flex; flex-direction: column; transition: 0.2s; position: relative; }
+        .cal-day:hover { border-color: var(--primary); transform: translateY(-2px); z-index: 10; cursor: pointer; }
+        .cal-day.today { border: 2px solid var(--primary); background: #eff6ff; }
+        .cal-num { font-size: 0.85rem; font-weight: 700; color: #64748b; margin-bottom: 4px; }
+        .event-tag { background: var(--primary); color: white; padding: 2px 5px; border-radius: 4px; font-size: 0.65rem; margin-bottom: 2px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+
+        /* 列表展示 */
+        .event-item { display: flex; justify-content: space-between; align-items: center; padding: 12px; border-bottom: 1px solid var(--border); }
+        .event-info { display: flex; flex-direction: column; gap: 4px; }
+        .event-time { font-family: monospace; font-weight: bold; color: var(--primary); font-size: 0.9rem; }
+
+        /* 按钮样式 */
+        .btn { padding: 8px 16px; border-radius: 8px; border: none; cursor: pointer; font-weight: 600; transition: 0.2s; font-size: 0.9rem; }
+        .btn-primary { background: var(--primary); color: white; }
+        .btn-primary:disabled { background: #94a3b8; }
+        .btn-ghost { background: transparent; color: #64748b; }
+        .btn-danger { color: var(--danger); background: #fee2e2; padding: 5px 10px; font-size: 0.75rem; }
 
         /* 登录屏 */
-        #loginScreen { position: fixed; inset: 0; background: white; display: flex; flex-direction: column; align-items: center; justify-content: center; z-index: 1000; }
+        .login-screen { position: fixed; inset: 0; background: radial-gradient(circle at center, #3b82f6 0%, #1e3a8a 100%); display: flex; justify-content: center; align-items: center; z-index: 9999; }
+        .login-card { background: white; padding: 40px; border-radius: 24px; width: 90%; max-width: 320px; text-align: center; box-shadow: 0 20px 50px rgba(0,0,0,0.3); }
+
+        /* 加载动画 */
+        .loader { width: 20px; height: 20px; border: 3px solid #f3f3f3; border-top: 3px solid var(--primary); border-radius: 50%; display: inline-block; animation: spin 1s linear infinite; vertical-align: middle; margin-right: 8px; }
+        @keyframes spin { 0% { transform: rotate(0deg); } 100% { transform: rotate(360deg); } }
+
+        @media (max-width: 600px) {
+            .cal-day { min-height: 60px; padding: 4px; }
+            .calendar-header { font-size: 0.7rem; }
+            .event-tag { font-size: 0.6rem; padding: 1px 2px; }
+        }
     </style>
 </head>
 <body>
 
     <!-- 登录模块 -->
-    <div id="loginScreen">
-        <h1>AI Calendar</h1>
-        <button class="btn btn-primary" onclick="login()">Google 账号登录</button>
+    <div id="loginScreen" class="login-screen">
+        <div class="login-card">
+            <h1 style="font-size: 3rem; margin-bottom: 10px;">📅</h1>
+            <h2 style="color: #1e40af; margin-bottom: 30px;">AI 智能日程表</h2>
+            <button class="btn btn-primary" style="width: 100%; padding: 14px;" onclick="login()">Google 账号登录</button>
+        </div>
     </div>
 
+    <!-- 主应用界面 -->
     <div id="app" class="container" style="display: none;">
-        <div class="header">
-            <h2 id="userName">我的日程</h2>
+        <div class="top-bar">
             <div>
-                <input type="password" id="apiKey" placeholder="DeepSeek API Key" style="padding: 5px; border-radius: 4px; border: 1px solid #ccc;">
-                <button class="btn" onclick="logout()">退出</button>
+                <h1 style="font-size: 1.2rem;">我的日程</h1>
+                <div id="userInfo" class="user-pill">加载中...</div>
             </div>
+            <button class="btn" style="background:rgba(255,255,255,0.2); color:white;" onclick="logout()">退出</button>
         </div>
 
-        <!-- AI 录入区 -->
+        <!-- AI 录入 -->
         <section class="card">
-            <h3>✨ 智能录入</h3>
-            <textarea id="aiInput" placeholder="直接输入，例如：明天下午2点在咖啡厅开会，持续一小时..."></textarea>
-            <div style="display: flex; justify-content: space-between; align-items: center;">
-                <span id="aiStatus" class="ai-status">支持自然语言识别日期、时间和时长</span>
-                <button class="btn btn-primary" id="aiBtn" onclick="processAI()">AI 识别并添加</button>
+            <div class="card-header">
+                <h2>✨ 智能识别录入</h2>
+                <input type="password" id="apiKey" class="key-input" placeholder="输入 DeepSeek API Key">
+            </div>
+            <div class="card-body">
+                <div class="ai-box">
+                    <textarea id="aiInput" placeholder="直接粘贴文本或输入：明天下午3点在星巴克见客户，持续1小时..."></textarea>
+                </div>
+                <div style="margin-top:10px; display:flex; justify-content:space-between; align-items:center;">
+                    <span id="aiStatus" style="font-size:0.8rem; color:#64748b;">支持识别日期、时间、任务和备注</span>
+                    <button class="btn btn-primary" id="aiBtn" onclick="processAI()">开始智能识别</button>
+                </div>
             </div>
         </section>
 
-        <!-- 日历显示区 -->
+        <!-- 日历视图 -->
         <section class="card">
-            <div style="display: flex; justify-content: space-between; align-items: center;">
-                <h3 id="currentMonth">2023年10月</h3>
-                <input type="month" id="monthPicker" onchange="renderCalendar()">
+            <div class="card-header">
+                <h2>📅 月度视图</h2>
+                <input type="month" id="monthPicker" onchange="renderAll()" style="border:1px solid var(--border); padding:5px; border-radius:6px;">
             </div>
-            <div class="calendar-grid" id="calHeader"></div>
-            <div class="calendar-grid" id="calGrid"></div>
+            <div class="card-body calendar-wrapper">
+                <div class="calendar-header">
+                    <div>日</div><div>一</div><div>二</div><div>三</div><div>四</div><div>五</div><div>六</div>
+                </div>
+                <div class="calendar-grid" id="calendarGrid"></div>
+            </div>
         </section>
 
-        <!-- 列表区 -->
+        <!-- 详细列表 -->
         <section class="card">
-            <h3>📅 近期列表</h3>
-            <div id="eventList"></div>
+            <div class="card-header"><h2>📋 日程明细</h2></div>
+            <div class="card-body" id="eventList" style="padding:0">
+                <!-- 列表内容 -->
+            </div>
         </section>
     </div>
 
     <script type="module">
-        // --- 1. Firebase 初始化 (请替换为你自己的配置) ---
+        // --- 1. Firebase 核心初始化 ---
         import { initializeApp } from 'https://www.gstatic.com/firebasejs/10.7.1/firebase-app.js';
-        import { getFirestore, collection, addDoc, query, orderBy, onSnapshot, doc, deleteDoc } from 'https://www.gstatic.com/firebasejs/10.7.1/firebase-firestore.js';
+        import { getFirestore, collection, addDoc, query, orderBy, onSnapshot, deleteDoc, doc } from 'https://www.gstatic.com/firebasejs/10.7.1/firebase-firestore.js';
         import { getAuth, signInWithPopup, GoogleAuthProvider, onAuthStateChanged, signOut } from 'https://www.gstatic.com/firebasejs/10.7.1/firebase-auth.js';
 
         const firebaseConfig = {
-            apiKey: "你的API_KEY",
-            authDomain: "你的域名.firebaseapp.com",
-            projectId: "你的项目ID",
-            storageBucket: "你的存储桶.appspot.com",
-            messagingSenderId: "发送者ID",
-            appId: "APP_ID"
+            apiKey: "AIzaSyCFk4f7bKUHlb3d1Cg1jyS1EM-SPC4pr40",
+            authDomain: "myflightlog-1f4cb.firebaseapp.com",
+            projectId: "myflightlog-1f4cb",
+            storageBucket: "myflightlog-1f4cb.firebasestorage.app",
+            messagingSenderId: "181072044112",
+            appId: "1:181072044112:web:ca312da2d4780227cef155"
         };
 
         const app = initializeApp(firebaseConfig);
@@ -100,20 +154,17 @@
         let currentUser = null;
         let allEvents = [];
 
-        // --- 2. 用户认证逻辑 ---
-        window.login = () => signInWithPopup(auth, provider);
-        window.logout = () => signOut(auth);
-
+        // --- 2. 用户登录状态监听 ---
         onAuthStateChanged(auth, (user) => {
             if (user) {
                 currentUser = user;
                 document.getElementById('loginScreen').style.display = 'none';
                 document.getElementById('app').style.display = 'flex';
-                document.getElementById('userName').innerText = `${user.displayName} 的日程`;
+                document.getElementById('userInfo').textContent = user.displayName;
                 document.getElementById('monthPicker').value = new Date().toISOString().slice(0, 7);
                 
-                // 加载本地保存的 API Key
-                if(localStorage.getItem('cal_api_key')) document.getElementById('apiKey').value = localStorage.getItem('cal_api_key');
+                // 恢复上次使用的 API Key
+                if(localStorage.getItem('my_ai_key')) document.getElementById('apiKey').value = localStorage.getItem('my_ai_key');
 
                 // 实时监听数据库
                 const q = query(collection(db, `users/${user.uid}/events`), orderBy("date", "asc"));
@@ -127,106 +178,138 @@
             }
         });
 
-        // --- 3. AI 核心识别逻辑 ---
+        window.login = () => signInWithPopup(auth, provider).catch(e => alert("登录失败: " + e.message));
+        window.logout = () => signOut(auth);
+
+        // --- 3. AI 智能识别逻辑 (DeepSeek) ---
         window.processAI = async () => {
             const text = document.getElementById('aiInput').value.trim();
-            const key = document.getElementById('apiKey').value.trim();
-            if(!text || !key) return alert("请输入内容和 API Key");
+            const apiKey = document.getElementById('apiKey').value.trim();
             
-            localStorage.setItem('cal_api_key', key);
+            if (!text || !apiKey) return alert("请输入需要识别的内容和 API Key");
+            localStorage.setItem('my_ai_key', apiKey);
+
             const btn = document.getElementById('aiBtn');
             const status = document.getElementById('aiStatus');
-            
             btn.disabled = true;
-            status.innerText = "⚡ AI 正在思考...";
+            btn.innerHTML = `<span class="loader"></span>识别中...`;
 
-            // 构建 Prompt
             const today = new Date().toISOString().split('T')[0];
             const prompt = `
-                你是一个日程助手。请将用户的描述转换为 JSON 格式。
-                当前的日期是 ${today}。
-                返回格式：{"title": "事件名称", "date": "YYYY-MM-DD", "time": "HH:MM", "duration": "分钟数", "desc": "详情"}
-                用户输入: "${text}"
+                你是一个高效的日程助理。请从用户的文字描述中提取日程信息并转换为 JSON 数组。
+                当前日期是: ${today}。
+                如果描述中提到“明天”、“下周”等词，请根据当前日期计算出具体日期。
+                JSON 格式要求：
+                [
+                  {"title": "任务名称", "date": "YYYY-MM-DD", "time": "HH:MM", "desc": "补充说明或地点"}
+                ]
+                用户描述：${text}
             `;
 
             try {
                 const res = await fetch("https://api.deepseek.com/chat/completions", {
                     method: "POST",
-                    headers: { "Content-Type": "application/json", "Authorization": `Bearer ${key}` },
+                    headers: { "Content-Type": "application/json", "Authorization": `Bearer ${apiKey}` },
                     body: JSON.stringify({
                         model: "deepseek-chat",
-                        messages: [{ role: "system", content: "你只输出纯 JSON，不输出任何解释。" }, { role: "user", content: prompt }],
+                        messages: [
+                            {role: "system", content: "你只输出 JSON，不包含任何多余的文字说明。"},
+                            {role: "user", content: prompt}
+                        ],
                         response_format: { type: "json_object" }
                     })
                 });
 
-                const data = await res.json();
-                const eventData = JSON.parse(data.choices[0].message.content);
-                
+                const raw = await res.json();
+                const content = JSON.parse(raw.choices[0].message.content);
+                const events = Array.isArray(content) ? content : content.events || [content];
+
                 // 保存到 Firebase
-                await addDoc(collection(db, `users/${currentUser.uid}/events`), {
-                    ...eventData,
-                    createdAt: new Date()
-                });
+                for (let ev of events) {
+                    await addDoc(collection(db, `users/${currentUser.uid}/events`), {
+                        ...ev,
+                        timestamp: new Date()
+                    });
+                }
 
                 document.getElementById('aiInput').value = "";
-                status.innerText = "✅ 已成功添加至日程";
+                status.style.color = "var(--success)";
+                status.textContent = "✅ 已成功识别并添加日程！";
             } catch (e) {
                 console.error(e);
-                alert("识别失败，请检查 API Key 或网络");
+                status.style.color = "var(--danger)";
+                status.textContent = "❌ 识别失败，请检查网络或 API Key。";
             } finally {
                 btn.disabled = false;
+                btn.innerHTML = "开始智能识别";
             }
         };
 
-        // --- 4. 界面渲染逻辑 ---
-        function renderAll() {
+        // --- 4. 界面渲染 ---
+        window.renderAll = () => {
             renderCalendar();
             renderList();
-        }
+        };
 
         function renderCalendar() {
-            const grid = document.getElementById('calGrid');
-            const header = document.getElementById('calHeader');
+            const grid = document.getElementById('calendarGrid');
             const monthVal = document.getElementById('monthPicker').value;
+            if(!monthVal) return;
+            
             const [y, m] = monthVal.split('-').map(Number);
-            
-            grid.innerHTML = '';
-            header.innerHTML = ['日','一','二','三','四','五','六'].map(d => `<div class="cal-header">${d}</div>`).join('');
-            
-            const firstDay = new Date(y, m-1, 1).getDay();
+            const firstDay = new Date(y, m - 1, 1).getDay();
             const daysInMonth = new Date(y, m, 0).getDate();
+            const todayStr = new Date().toISOString().split('T')[0];
+
+            grid.innerHTML = '';
 
             // 填充空白
-            for(let i=0; i<firstDay; i++) grid.innerHTML += `<div></div>`;
+            for (let i = 0; i < firstDay; i++) {
+                grid.innerHTML += `<div class="cal-day" style="background:transparent;border:none"></div>`;
+            }
 
             // 填充日期
-            for(let d=1; d<=daysInMonth; d++) {
-                const dateStr = `${y}-${String(m).padStart(2,'0')}-${String(d).padStart(2,'0')}`;
+            for (let d = 1; d <= daysInMonth; d++) {
+                const dateStr = `${y}-${String(m).padStart(2, '0')}-${String(d).padStart(2, '0')}`;
+                const isToday = dateStr === todayStr;
                 const dayEvents = allEvents.filter(e => e.date === dateStr);
-                
+
                 let eventHtml = dayEvents.map(e => `<div class="event-tag">${e.time || ''} ${e.title}</div>`).join('');
-                grid.innerHTML += `<div class="cal-day"><strong>${d}</strong>${eventHtml}</div>`;
+                
+                grid.innerHTML += `
+                    <div class="cal-day ${isToday ? 'today' : ''}">
+                        <div class="cal-num">${d}</div>
+                        <div style="overflow-y:auto; flex:1">${eventHtml}</div>
+                    </div>`;
             }
         }
 
         function renderList() {
-            const list = document.getElementById('eventList');
-            if(allEvents.length === 0) { list.innerHTML = "暂无日程"; return; }
-            
-            list.innerHTML = allEvents.map(e => `
-                <div style="border-bottom: 1px solid #eee; padding: 10px 0; display:flex; justify-content:space-between;">
-                    <div>
-                        <b style="color:var(--primary)">${e.date} ${e.time || ''}</b> - ${e.title}
-                        <div style="font-size: 0.8rem; color: #666;">${e.desc || ''}</div>
+            const listEl = document.getElementById('eventList');
+            const monthVal = document.getElementById('monthPicker').value;
+            const filtered = allEvents.filter(e => e.date.startsWith(monthVal));
+
+            if (filtered.length === 0) {
+                listEl.innerHTML = `<div style="padding:20px; text-align:center; color:#94a3b8">本月暂无计划</div>`;
+                return;
+            }
+
+            listEl.innerHTML = filtered.map(e => `
+                <div class="event-item">
+                    <div class="event-info">
+                        <div style="font-weight:bold; color:#1e293b">${e.title}</div>
+                        <div style="font-size:0.8rem; color:#64748b">
+                            <span class="event-time">${e.date} ${e.time || ''}</span> 
+                            ${e.desc ? `· ${e.desc}` : ''}
+                        </div>
                     </div>
-                    <button onclick="deleteEvent('${e.id}')" style="color:red; border:none; background:none; cursor:pointer;">删除</button>
+                    <button class="btn btn-danger" onclick="deleteItem('${e.id}')">删除</button>
                 </div>
             `).join('');
         }
 
-        window.deleteEvent = async (id) => {
-            if(confirm("确定删除吗？")) {
+        window.deleteItem = async (id) => {
+            if (confirm("确定删除这条记录吗？")) {
                 await deleteDoc(doc(db, `users/${currentUser.uid}/events`, id));
             }
         };
