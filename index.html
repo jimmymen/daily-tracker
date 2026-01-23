@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
-    <title>进化清单 Pro - 云端同步版</title>
+    <title>进化清单 Pro - 录入分离版</title>
     <style>
         :root {
             --primary: #2563eb; --bg: #f8fafc; --border: #cbd5e1;
@@ -18,29 +18,42 @@
         .date-nav { display: flex; justify-content: space-between; align-items: center; background: #fff; padding: 8px; border-radius: 10px; border: 1px solid var(--border); }
         .date-str { font-weight: bold; color: var(--primary); font-size: 0.9rem; }
 
+        /* 聊天区域 */
         .chat-box { 
             background: #fff; border: 1px solid var(--border); border-radius: 12px; 
-            height: 350px; overflow-y: auto; padding: 12px; display: flex; flex-direction: column; gap: 10px;
+            height: 300px; overflow-y: auto; padding: 12px; display: flex; flex-direction: column; gap: 10px;
             scroll-behavior: smooth;
         }
-        .msg { max-width: 85%; padding: 10px; border-radius: 10px; font-size: 0.85rem; line-height: 1.5; position: relative; word-wrap: break-word; }
+        .msg { max-width: 85%; padding: 10px; border-radius: 10px; font-size: 0.85rem; line-height: 1.5; }
         .msg-user { align-self: flex-end; background: var(--user-msg); color: white; border-bottom-right-radius: 2px; }
         .msg-coach { align-self: flex-start; background: var(--coach-msg); color: var(--coach-text); border: 1px solid #fed7aa; border-bottom-left-radius: 2px; }
-        .msg-time { font-size: 0.65rem; opacity: 0.6; display: block; margin-top: 4px; }
 
+        /* 任务清单设计 */
+        .list-header { display: flex; justify-content: space-between; align-items: center; padding: 0 5px; margin-top: 5px; }
         .task-list { display: flex; flex-direction: column; gap: 6px; }
-        .task-item { display: flex; align-items: center; background: #fff; padding: 10px; border-radius: 10px; border: 1px solid var(--border); transition: 0.2s; }
+        .task-item { display: flex; align-items: center; background: #fff; padding: 12px; border-radius: 10px; border: 1px solid var(--border); }
         .task-item.done { opacity: 0.5; background: #f1f5f9; border-style: dashed; order: 100; }
         .checkbox { width: 18px; height: 18px; border-radius: 50%; border: 2px solid var(--border); margin-right: 10px; cursor: pointer; flex-shrink: 0; }
         .task-item.done .checkbox { background: #10b981; border-color: #10b981; }
         .task-title { flex: 1; font-weight: 500; font-size: 0.9rem; }
         .done .task-title { text-decoration: line-through; }
 
+        /* 输入区 */
         .input-area { background: #fff; border: 1px solid var(--border); border-radius: 12px; padding: 10px; box-shadow: 0 -2px 10px rgba(0,0,0,0.05); }
         .key-row { display: flex; gap: 5px; margin-bottom: 8px; }
         .key-row input { flex: 1; padding: 6px; font-size: 0.7rem; border: 1px solid var(--border); border-radius: 4px; }
         textarea { width: 100%; height: 50px; border: 1px solid #e2e8f0; border-radius: 8px; padding: 8px; resize: none; font-size: 0.9rem; outline: none; }
         .ai-btn { background: var(--primary); color: white; border: none; padding: 8px 24px; border-radius: 8px; font-weight: bold; cursor: pointer; float: right; margin-top: 5px; }
+
+        /* 弹窗样式 (Modal) */
+        .modal-overlay { position: fixed; inset: 0; background: rgba(0,0,0,0.5); display: none; justify-content: center; align-items: center; z-index: 4000; }
+        .modal-content { background: white; width: 85%; max-width: 400px; padding: 20px; border-radius: 16px; box-shadow: 0 10px 25px rgba(0,0,0,0.2); }
+        .modal-title { font-weight: bold; margin-bottom: 15px; display: block; }
+        .modal-input { width: 100%; padding: 12px; border: 1px solid var(--border); border-radius: 8px; margin-bottom: 15px; font-size: 1rem; }
+        .modal-btns { display: flex; gap: 10px; justify-content: flex-end; }
+
+        /* 悬浮加号按钮 */
+        .add-task-btn { background: var(--primary); color: white; border: none; width: 28px; height: 28px; border-radius: 8px; font-size: 1.2rem; cursor: pointer; font-weight: bold; display: flex; align-items: center; justify-content: center; }
 
         .small-btn { font-size: 0.65rem; padding: 3px 8px; border-radius: 4px; border: 1px solid #e2e8f0; background: white; cursor: pointer; color: #64748b; }
         .loading { position: fixed; inset: 0; background: rgba(255,255,255,0.8); display: none; justify-content: center; align-items: center; z-index: 2000; }
@@ -48,7 +61,7 @@
 </head>
 <body>
 
-    <div id="loginScreen" style="position:fixed;inset:0;background:#1e3a8a;display:flex;justify-content:center;align-items:center;z-index:3000;">
+    <div id="loginScreen" style="position:fixed;inset:0;background:#1e3a8a;display:flex;justify-content:center;align-items:center;z-index:5000;">
         <div style="background:white;padding:30px;border-radius:20px;text-align:center;width:80%;">
             <h1 style="font-size:3rem;margin:0">🧬</h1>
             <h2>进化私教 Pro</h2>
@@ -56,11 +69,23 @@
         </div>
     </div>
 
-    <div id="loading" class="loading">正在同步云端数据...</div>
+    <!-- 录入对话框 -->
+    <div id="addTaskModal" class="modal-overlay" onclick="if(event.target===this) closeAddTaskModal()">
+        <div class="modal-content">
+            <span class="modal-title">🆕 增加新训练任务</span>
+            <input type="text" id="manualTaskInput" class="modal-input" placeholder="例如：跪式俯卧撑 10个" onkeyup="if(event.key==='Enter') saveTaskManual()">
+            <div class="modal-btns">
+                <button class="small-btn" onclick="closeAddTaskModal()">取消</button>
+                <button class="ai-btn" style="margin:0; padding:8px 20px" onclick="saveTaskManual()">确认增加</button>
+            </div>
+        </div>
+    </div>
+
+    <div id="loading" class="loading">处理中...</div>
 
     <div id="app" class="container" style="display: none;">
         <div class="header">
-            <span id="userName" style="font-size: 0.8rem; font-weight: bold;">我的进化私教</span>
+            <span id="userName" style="font-size: 0.8rem;">我的进化私教</span>
             <button class="small-btn" onclick="logout()" style="border:1px solid white; background:transparent; color:white;">退出</button>
         </div>
 
@@ -71,12 +96,15 @@
         </div>
 
         <div style="display:flex; justify-content:space-between; align-items:center; padding:0 5px;">
-            <span style="font-size:0.75rem;color:#64748b;font-weight:bold;">💬 教练对话</span>
+            <span style="font-size:0.75rem;color:#64748b;font-weight:bold;">💬 对话记录</span>
             <button class="small-btn" style="color:red;border-color:#fee2e2;" onclick="clearChats()">清空今日对话</button>
         </div>
         <div id="chatBox" class="chat-box"></div>
 
-        <div style="font-size:0.75rem;color:#64748b;font-weight:bold;padding-left:5px;">📋 训练计划</div>
+        <div class="list-header">
+            <span style="font-size:0.75rem;color:#64748b;font-weight:bold;">📋 训练计划</span>
+            <button class="add-task-btn" onclick="openAddTaskModal()">+</button>
+        </div>
         <div id="taskList" class="task-list"></div>
 
         <div class="input-area">
@@ -115,17 +143,13 @@
         let currentTasks = [];
         let allChatsCache = [];
 
-        // --- 核心：身份验证与云端 Key 读取 ---
         onAuthStateChanged(auth, async (user) => {
             if (user) {
                 currentUser = user;
                 document.getElementById('loginScreen').style.display = 'none';
                 document.getElementById('app').style.display = 'flex';
                 document.getElementById('userName').textContent = `学员: ${user.displayName}`;
-                
-                // 1. 从云端读取 Key
                 await loadKeyFromFirebase();
-                
                 initView(selectedDate);
             } else {
                 document.getElementById('loginScreen').style.display = 'flex';
@@ -136,45 +160,22 @@
         window.login = () => signInWithPopup(auth, provider);
         window.logout = () => signOut(auth);
 
-        // --- 核心逻辑：云端 Key 管理 ---
         async function loadKeyFromFirebase() {
-            try {
-                const keyDoc = await getDoc(doc(db, `users/${currentUser.uid}/settings`, "deepseek"));
-                if (keyDoc.exists()) {
-                    const key = keyDoc.data().apiKey;
-                    document.getElementById('apiKey').value = key;
-                    console.log("已从云端恢复 API Key");
-                }
-            } catch (e) {
-                console.error("加载 Key 失败:", e);
-            }
+            const keyDoc = await getDoc(doc(db, `users/${currentUser.uid}/settings`, "deepseek"));
+            if (keyDoc.exists()) document.getElementById('apiKey').value = keyDoc.data().apiKey;
         }
 
         window.saveKeyToFirebase = async () => {
             const key = document.getElementById('apiKey').value.trim();
-            if (!key) return alert("请输入内容再保存");
-            
-            const btn = document.getElementById('saveKeyBtn');
-            btn.textContent = "保存中...";
-            try {
-                await setDoc(doc(db, `users/${currentUser.uid}/settings`, "deepseek"), {
-                    apiKey: key,
-                    updatedAt: serverTimestamp()
-                });
-                alert("API Key 已安全保存到云端");
-            } catch (e) {
-                alert("保存失败: " + e.message);
-            } finally {
-                btn.textContent = "保存到云端";
-            }
+            if (!key) return;
+            await setDoc(doc(db, `users/${currentUser.uid}/settings`, "deepseek"), { apiKey: key, updatedAt: serverTimestamp() });
+            alert("API Key 已同步");
         };
 
-        // --- 视图初始化与继承 ---
         async function initView(dateStr) {
             document.getElementById('dateDisplay').textContent = dateStr;
             const uid = currentUser.uid;
             if (unsubT) unsubT(); if (unsubC) unsubC();
-
             const tCol = collection(db, `users/${uid}/tasks`);
             const cCol = collection(db, `users/${uid}/chats`);
 
@@ -184,8 +185,7 @@
                 const snapPast = await getDocs(query(tCol, where("date", "<", dateStr), orderBy("date", "desc"), limit(1)));
                 if (!snapPast.empty) {
                     const snapTasks = await getDocs(query(tCol, where("date", "==", snapPast.docs[0].data().date)));
-                    const clones = snapTasks.docs.map(t => addDoc(tCol, { title: t.data().title, date: dateStr, isDone: false, order: t.data().order || Date.now() }));
-                    await Promise.all(clones);
+                    await Promise.all(snapTasks.docs.map(t => addDoc(tCol, { title: t.data().title, date: dateStr, isDone: false, order: t.data().order || Date.now() })));
                 }
                 document.getElementById('loading').style.display = 'none';
             }
@@ -198,8 +198,7 @@
 
             unsubC = onSnapshot(query(cCol, orderBy("timestamp", "asc")), (snap) => {
                 allChatsCache = snap.docs.map(d => ({id: d.id, ...d.data()}));
-                const filtered = allChatsCache.filter(c => c.date === selectedDate);
-                renderChats(filtered);
+                renderChats(allChatsCache.filter(c => c.date === selectedDate));
             });
         }
 
@@ -216,19 +215,38 @@
 
         function renderChats(chats) {
             const el = document.getElementById('chatBox');
-            if (chats.length === 0) {
-                el.innerHTML = '<div style="text-align:center;padding-top:100px;color:#cbd5e1;font-size:0.8rem;">开始跟私教交流吧</div>';
-                return;
-            }
-            el.innerHTML = chats.map(c => {
-                const time = c.timestamp ? new Date(c.timestamp.seconds * 1000).toLocaleTimeString([], {hour:'2-digit', minute:'2-digit'}) : '...';
-                return `<div class="msg msg-${c.role}">${c.text}<span class="msg-time">${time}</span></div>`;
-            }).join('');
+            if (chats.length === 0) { el.innerHTML = '<div style="text-align:center;padding-top:100px;color:#cbd5e1;font-size:0.8rem;">开始跟私教交流吧</div>'; return; }
+            el.innerHTML = chats.map(c => `<div class="msg msg-${c.role}">${c.text}</div>`).join('');
             el.scrollTop = el.scrollHeight;
         }
 
+        // --- 录入对话框控制逻辑 ---
+        window.openAddTaskModal = () => {
+            document.getElementById('addTaskModal').style.display = 'flex';
+            document.getElementById('manualTaskInput').focus();
+        };
+
+        window.closeAddTaskModal = () => {
+            document.getElementById('addTaskModal').style.display = 'none';
+            document.getElementById('manualTaskInput').value = '';
+        };
+
+        window.saveTaskManual = async () => {
+            const title = document.getElementById('manualTaskInput').value.trim();
+            if (!title) return;
+            document.getElementById('loading').style.display = 'flex';
+            await addDoc(collection(db, `users/${currentUser.uid}/tasks`), {
+                title: title,
+                date: selectedDate,
+                isDone: false,
+                order: Date.now()
+            });
+            document.getElementById('loading').style.display = 'none';
+            closeAddTaskModal();
+        };
+
         window.toggleTask = async (id, s) => updateDoc(doc(db, `users/${currentUser.uid}/tasks`, id), { isDone: !s });
-        window.deleteTask = async (id) => { if(confirm("彻底删除任务？")) await deleteDoc(doc(db, `users/${currentUser.uid}/tasks`, id)); };
+        window.deleteTask = async (id) => { if(confirm("彻底删除？")) await deleteDoc(doc(db, `users/${currentUser.uid}/tasks`, id)); };
         
         window.clearChats = async () => {
             if (!confirm("确定清空今日对话？")) return;
@@ -242,14 +260,12 @@
             selectedDate = d.toISOString().split('T')[0]; initView(selectedDate);
         };
 
-        // --- AI 私教核心逻辑 ---
         window.processAI = async () => {
             const input = document.getElementById('aiInput').value.trim();
             const key = document.getElementById('apiKey').value.trim();
             if (!input || !key) return alert("内容或 Key 缺失");
-
             const btn = document.getElementById('aiBtn');
-            btn.disabled = true; btn.textContent = "思考中";
+            btn.disabled = true; btn.textContent = "●●●";
             const uid = currentUser.uid;
             const chatCol = collection(db, `users/${uid}/chats`);
 
@@ -265,12 +281,7 @@
                         messages: [
                             {
                                 role: "system", 
-                                content: `你是一个资深的健身私教。
-                                规则：
-                                1. 专业性：根据学员反馈（如轻松、酸痛）提供生理学解释和建议。
-                                2. 指导性：指导呼吸、营养和休息。
-                                3. 稳健性：除非用户明确要求（加练、删除计划），否则严禁主动改动任务清单。
-                                4. JSON：必须返回 {"coach_reply": "...", "changes": []}`
+                                content: `你是一个健身私教。根据反馈（酸痛/轻松等）提供生理建议。严禁擅自修改清单。JSON：{"coach_reply": "...", "changes": []}`
                             },
                             {role: "user", content: `今日计划状态：[${taskCtx}]。学员反馈：${input}`}
                         ],
@@ -294,7 +305,7 @@
                 }
                 document.getElementById('aiInput').value = "";
             } catch (e) {
-                alert("执行失败: " + e.message);
+                alert("AI 出错: " + e.message);
             } finally {
                 btn.disabled = false; btn.textContent = "发送";
             }
