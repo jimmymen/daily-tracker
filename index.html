@@ -2,49 +2,94 @@
 <html lang="zh-CN">
 <head>
     <meta charset="UTF-8">
-    <title>AI 实时日程 Pro</title>
-    <!-- 引入相同的样式风格，保持一致性 -->
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>AI 智能日程表 - 核心版</title>
     <style>
-        :root { --primary: #2563eb; --bg: #f8fafc; }
-        body { font-family: system-ui; background: var(--bg); padding: 20px; }
-        .card { background: white; border-radius: 12px; padding: 20px; box-shadow: 0 4px 6px rgba(0,0,0,0.1); margin-bottom: 20px; }
-        .schedule-item { display: flex; justify-content: space-between; padding: 10px; border-bottom: 1px solid #eee; }
-        .tag { padding: 2px 8px; border-radius: 4px; font-size: 0.8rem; background: #dbeafe; }
+        :root {
+            --primary: #2563eb; --bg: #f8fafc; --card: #ffffff;
+            --text: #1e293b; --border: #e2e8f0;
+        }
+        * { box-sizing: border-box; font-family: -apple-system, system-ui, sans-serif; }
+        body { background: var(--bg); color: var(--text); margin: 0; padding: 20px; }
+        .container { max-width: 800px; margin: 0 auto; display: flex; flex-direction: column; gap: 20px; }
+        
+        /* 基础组件 */
+        .card { background: var(--card); border-radius: 12px; border: 1px solid var(--border); padding: 20px; box-shadow: 0 1px 3px rgba(0,0,0,0.1); }
+        .header { display: flex; justify-content: space-between; align-items: center; }
+        .btn { padding: 8px 16px; border-radius: 6px; border: none; cursor: pointer; font-weight: 600; transition: 0.2s; }
+        .btn-primary { background: var(--primary); color: white; }
+        
+        /* AI 输入区 */
+        textarea { width: 100%; height: 80px; padding: 12px; border: 1px solid var(--border); border-radius: 8px; margin-bottom: 10px; resize: none; }
+        .ai-status { font-size: 0.85rem; color: #64748b; margin-top: 5px; }
+
+        /* 日历样式 */
+        .calendar-grid { display: grid; grid-template-columns: repeat(7, 1fr); gap: 5px; margin-top: 10px; }
+        .cal-day { border: 1px solid var(--border); min-height: 80px; padding: 5px; font-size: 0.8rem; background: #fff; }
+        .cal-header { text-align: center; font-weight: bold; padding: 10px 0; }
+        .event-tag { background: #dbeafe; color: #1e40af; padding: 2px 4px; border-radius: 3px; margin-top: 2px; font-size: 0.7rem; overflow: hidden; }
+
+        /* 登录屏 */
+        #loginScreen { position: fixed; inset: 0; background: white; display: flex; flex-direction: column; align-items: center; justify-content: center; z-index: 1000; }
     </style>
 </head>
 <body>
 
-    <div id="loginSection">
-        <button onclick="login()">Google 登录同步日程</button>
+    <!-- 登录模块 -->
+    <div id="loginScreen">
+        <h1>AI Calendar</h1>
+        <button class="btn btn-primary" onclick="login()">Google 账号登录</button>
     </div>
 
-    <div id="app" style="display:none;">
-        <div class="card">
-            <h2>✨ AI 快速添加</h2>
-            <textarea id="aiInput" placeholder="例如：明天下午3点和张总在咖啡厅开会..."></textarea>
-            <button onclick="processAI()">识别并同步</button>
+    <div id="app" class="container" style="display: none;">
+        <div class="header">
+            <h2 id="userName">我的日程</h2>
+            <div>
+                <input type="password" id="apiKey" placeholder="DeepSeek API Key" style="padding: 5px; border-radius: 4px; border: 1px solid #ccc;">
+                <button class="btn" onclick="logout()">退出</button>
+            </div>
         </div>
 
-        <div class="card">
-            <h2>📅 我的日程 (实时同步)</h2>
-            <div id="scheduleList">正在连接实时数据库...</div>
-        </div>
+        <!-- AI 录入区 -->
+        <section class="card">
+            <h3>✨ 智能录入</h3>
+            <textarea id="aiInput" placeholder="直接输入，例如：明天下午2点在咖啡厅开会，持续一小时..."></textarea>
+            <div style="display: flex; justify-content: space-between; align-items: center;">
+                <span id="aiStatus" class="ai-status">支持自然语言识别日期、时间和时长</span>
+                <button class="btn btn-primary" id="aiBtn" onclick="processAI()">AI 识别并添加</button>
+            </div>
+        </section>
+
+        <!-- 日历显示区 -->
+        <section class="card">
+            <div style="display: flex; justify-content: space-between; align-items: center;">
+                <h3 id="currentMonth">2023年10月</h3>
+                <input type="month" id="monthPicker" onchange="renderCalendar()">
+            </div>
+            <div class="calendar-grid" id="calHeader"></div>
+            <div class="calendar-grid" id="calGrid"></div>
+        </section>
+
+        <!-- 列表区 -->
+        <section class="card">
+            <h3>📅 近期列表</h3>
+            <div id="eventList"></div>
+        </section>
     </div>
 
-    <!-- Firebase SDK 模块化引入 -->
     <script type="module">
-        import { initializeApp } from "https://www.gstatic.com/firebasejs/10.7.1/firebase-app.js";
-        import { getFirestore, collection, addDoc, query, orderBy, onSnapshot, doc, deleteDoc } from "https://www.gstatic.com/firebasejs/10.7.1/firebase-firestore.js";
-        import { getAuth, signInWithPopup, GoogleAuthProvider, onAuthStateChanged } from "https://www.gstatic.com/firebasejs/10.7.1/firebase-auth.js";
+        // --- 1. Firebase 初始化 (请替换为你自己的配置) ---
+        import { initializeApp } from 'https://www.gstatic.com/firebasejs/10.7.1/firebase-app.js';
+        import { getFirestore, collection, addDoc, query, orderBy, onSnapshot, doc, deleteDoc } from 'https://www.gstatic.com/firebasejs/10.7.1/firebase-firestore.js';
+        import { getAuth, signInWithPopup, GoogleAuthProvider, onAuthStateChanged, signOut } from 'https://www.gstatic.com/firebasejs/10.7.1/firebase-auth.js';
 
-        // 1. 配置信息 (替换为你自己的)
         const firebaseConfig = {
             apiKey: "你的API_KEY",
-            authDomain: "你的项目.firebaseapp.com",
+            authDomain: "你的域名.firebaseapp.com",
             projectId: "你的项目ID",
-            storageBucket: "你的项目.appspot.com",
-            messagingSenderId: "...",
-            appId: "..."
+            storageBucket: "你的存储桶.appspot.com",
+            messagingSenderId: "发送者ID",
+            appId: "APP_ID"
         };
 
         const app = initializeApp(firebaseConfig);
@@ -53,73 +98,138 @@
         const provider = new GoogleAuthProvider();
 
         let currentUser = null;
+        let allEvents = [];
 
-        // 2. 核心：身份状态监听
+        // --- 2. 用户认证逻辑 ---
+        window.login = () => signInWithPopup(auth, provider);
+        window.logout = () => signOut(auth);
+
         onAuthStateChanged(auth, (user) => {
             if (user) {
                 currentUser = user;
-                document.getElementById('loginSection').style.display = 'none';
-                document.getElementById('app').style.display = 'block';
-                // 开启实时数据同步
-                startLiveSync(user.uid);
+                document.getElementById('loginScreen').style.display = 'none';
+                document.getElementById('app').style.display = 'flex';
+                document.getElementById('userName').innerText = `${user.displayName} 的日程`;
+                document.getElementById('monthPicker').value = new Date().toISOString().slice(0, 7);
+                
+                // 加载本地保存的 API Key
+                if(localStorage.getItem('cal_api_key')) document.getElementById('apiKey').value = localStorage.getItem('cal_api_key');
+
+                // 实时监听数据库
+                const q = query(collection(db, `users/${user.uid}/events`), orderBy("date", "asc"));
+                onSnapshot(q, (snap) => {
+                    allEvents = snap.docs.map(d => ({id: d.id, ...d.data()}));
+                    renderAll();
+                });
+            } else {
+                document.getElementById('loginScreen').style.display = 'flex';
+                document.getElementById('app').style.display = 'none';
             }
         });
 
-        // 3. 核心：实时同步逻辑 (借鉴你代码中的 snapShot)
-        function startLiveSync(uid) {
-            const q = query(
-                collection(db, `users/${uid}/schedules`), 
-                orderBy("startTime", "asc")
-            );
+        // --- 3. AI 核心识别逻辑 ---
+        window.processAI = async () => {
+            const text = document.getElementById('aiInput').value.trim();
+            const key = document.getElementById('apiKey').value.trim();
+            if(!text || !key) return alert("请输入内容和 API Key");
+            
+            localStorage.setItem('cal_api_key', key);
+            const btn = document.getElementById('aiBtn');
+            const status = document.getElementById('aiStatus');
+            
+            btn.disabled = true;
+            status.innerText = "⚡ AI 正在思考...";
 
-            // 这个函数会一直挂载，数据库一变，UI 立即变
-            onSnapshot(q, (snapshot) => {
-                const listEl = document.getElementById('scheduleList');
-                let html = '';
-                
-                snapshot.forEach((doc) => {
-                    const item = doc.data();
-                    html += `
-                        <div class="schedule-item">
-                            <div>
-                                <strong>${item.title}</strong>
-                                <span class="tag">${item.startTime}</span>
-                            </div>
-                            <button onclick="deleteTask('${doc.id}')">🗑️</button>
-                        </div>
-                    `;
+            // 构建 Prompt
+            const today = new Date().toISOString().split('T')[0];
+            const prompt = `
+                你是一个日程助手。请将用户的描述转换为 JSON 格式。
+                当前的日期是 ${today}。
+                返回格式：{"title": "事件名称", "date": "YYYY-MM-DD", "time": "HH:MM", "duration": "分钟数", "desc": "详情"}
+                用户输入: "${text}"
+            `;
+
+            try {
+                const res = await fetch("https://api.deepseek.com/chat/completions", {
+                    method: "POST",
+                    headers: { "Content-Type": "application/json", "Authorization": `Bearer ${key}` },
+                    body: JSON.stringify({
+                        model: "deepseek-chat",
+                        messages: [{ role: "system", content: "你只输出纯 JSON，不输出任何解释。" }, { role: "user", content: prompt }],
+                        response_format: { type: "json_object" }
+                    })
                 });
+
+                const data = await res.json();
+                const eventData = JSON.parse(data.choices[0].message.content);
                 
-                listEl.innerHTML = html || '暂无日程，请添加';
-            });
+                // 保存到 Firebase
+                await addDoc(collection(db, `users/${currentUser.uid}/events`), {
+                    ...eventData,
+                    createdAt: new Date()
+                });
+
+                document.getElementById('aiInput').value = "";
+                status.innerText = "✅ 已成功添加至日程";
+            } catch (e) {
+                console.error(e);
+                alert("识别失败，请检查 API Key 或网络");
+            } finally {
+                btn.disabled = false;
+            }
+        };
+
+        // --- 4. 界面渲染逻辑 ---
+        function renderAll() {
+            renderCalendar();
+            renderList();
         }
 
-        // 4. AI 识别处理 (借鉴你代码中的 DeepSeek 思路)
-        window.processAI = async () => {
-            const text = document.getElementById('aiInput').value;
-            // 提示词工程：强制 AI 返回日程相关的 JSON
-            const prompt = "将以下文字转化为日程JSON对象，包含字段：title, startTime(YYYY-MM-DD HH:mm), location, category";
+        function renderCalendar() {
+            const grid = document.getElementById('calGrid');
+            const header = document.getElementById('calHeader');
+            const monthVal = document.getElementById('monthPicker').value;
+            const [y, m] = monthVal.split('-').map(Number);
             
-            /* 这里调用 AI API (fetch DeepSeek...) */
-            // 假设 AI 返回了结果：
-            const aiResult = {
-                title: "和张总开会",
-                startTime: "2023-11-20 15:00",
-                location: "咖啡厅",
-                category: "工作"
-            };
+            grid.innerHTML = '';
+            header.innerHTML = ['日','一','二','三','四','五','六'].map(d => `<div class="cal-header">${d}</div>`).join('');
+            
+            const firstDay = new Date(y, m-1, 1).getDay();
+            const daysInMonth = new Date(y, m, 0).getDate();
 
-            // 直接存入 Firebase，所有端会自动同步显示
-            await addDoc(collection(db, `users/${currentUser.uid}/schedules`), aiResult);
-            document.getElementById('aiInput').value = '';
+            // 填充空白
+            for(let i=0; i<firstDay; i++) grid.innerHTML += `<div></div>`;
+
+            // 填充日期
+            for(let d=1; d<=daysInMonth; d++) {
+                const dateStr = `${y}-${String(m).padStart(2,'0')}-${String(d).padStart(2,'0')}`;
+                const dayEvents = allEvents.filter(e => e.date === dateStr);
+                
+                let eventHtml = dayEvents.map(e => `<div class="event-tag">${e.time || ''} ${e.title}</div>`).join('');
+                grid.innerHTML += `<div class="cal-day"><strong>${d}</strong>${eventHtml}</div>`;
+            }
+        }
+
+        function renderList() {
+            const list = document.getElementById('eventList');
+            if(allEvents.length === 0) { list.innerHTML = "暂无日程"; return; }
+            
+            list.innerHTML = allEvents.map(e => `
+                <div style="border-bottom: 1px solid #eee; padding: 10px 0; display:flex; justify-content:space-between;">
+                    <div>
+                        <b style="color:var(--primary)">${e.date} ${e.time || ''}</b> - ${e.title}
+                        <div style="font-size: 0.8rem; color: #666;">${e.desc || ''}</div>
+                    </div>
+                    <button onclick="deleteEvent('${e.id}')" style="color:red; border:none; background:none; cursor:pointer;">删除</button>
+                </div>
+            `).join('');
+        }
+
+        window.deleteEvent = async (id) => {
+            if(confirm("确定删除吗？")) {
+                await deleteDoc(doc(db, `users/${currentUser.uid}/events`, id));
+            }
         };
-
-        // 删除逻辑
-        window.deleteTask = async (id) => {
-            await deleteDoc(doc(db, `users/${currentUser.uid}/schedules`, id));
-        };
-
-        window.login = () => signInWithPopup(auth, provider);
 
     </script>
 </body>
