@@ -3,97 +3,87 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
-    <title>进化清单 Pro - 稳定加强版</title>
+    <title>进化清单 Pro - 纯净版</title>
     <style>
         :root {
-            --primary: #2563eb; --primary-dark: #1e40af; 
-            --bg: #f8fafc; --card: #ffffff; --text: #334155; --border: #cbd5e1;
-            --success: #10b981; --danger: #ef4444; --coach-bg: #fff7ed; --coach-text: #92400e;
+            --primary: #2563eb; --bg: #f8fafc; --border: #cbd5e1;
+            --user-msg: #2563eb; --coach-msg: #fff7ed; --coach-text: #9a3412;
         }
-        * { margin: 0; padding: 0; box-sizing: border-box; -webkit-tap-highlight-color: transparent; }
-        body { font-family: system-ui, -apple-system; background: var(--bg); color: var(--text); padding: 15px; min-height: 100vh; }
-        .container { max-width: 600px; margin: 0 auto; display: flex; flex-direction: column; gap: 12px; padding-bottom: 40px; }
+        * { box-sizing: border-box; -webkit-tap-highlight-color: transparent; }
+        body { font-family: system-ui, -apple-system; background: var(--bg); margin: 0; padding: 15px; }
+        .container { max-width: 600px; margin: 0 auto; display: flex; flex-direction: column; gap: 10px; }
 
         /* 顶部导航 */
-        .top-bar { background: linear-gradient(135deg, var(--primary), var(--primary-dark)); color: white; padding: 15px 20px; border-radius: 16px; box-shadow: 0 4px 12px rgba(37,99,235,0.2); display: flex; justify-content: space-between; align-items: center; }
-        .date-nav { display: flex; justify-content: space-between; align-items: center; background: #fff; padding: 10px 20px; border-radius: 12px; border: 1px solid var(--border); margin-top: -8px; }
-        .date-str { font-weight: 800; color: var(--primary); font-size: 1rem; }
+        .header { background: #1e3a8a; color: white; padding: 15px; border-radius: 12px; display: flex; justify-content: space-between; align-items: center; }
+        .date-nav { display: flex; justify-content: space-between; align-items: center; background: #fff; padding: 10px; border-radius: 10px; border: 1px solid var(--border); }
+        .date-str { font-weight: bold; color: var(--primary); }
 
-        /* 聊天展示区 */
-        .section-title { font-size: 0.9rem; font-weight: bold; color: #64748b; margin-top: 5px; }
-        .chat-container { 
-            background: #fff; border: 1px solid var(--border); border-radius: 16px; 
-            height: 300px; overflow-y: auto; padding: 15px; display: flex; flex-direction: column; gap: 10px;
+        /* 聊天区域 - 核心优化 */
+        .chat-box { 
+            background: #fff; border: 1px solid var(--border); border-radius: 12px; 
+            height: 320px; overflow-y: auto; padding: 15px; display: flex; flex-direction: column; gap: 10px;
         }
-        .msg { max-width: 85%; padding: 10px 14px; border-radius: 12px; font-size: 0.9rem; line-height: 1.4; position: relative; word-wrap: break-word; }
-        .msg-user { align-self: flex-end; background: var(--primary); color: white; border-bottom-right-radius: 2px; }
-        .msg-coach { align-self: flex-start; background: var(--coach-bg); color: var(--coach-text); border: 1px solid #fde68a; border-bottom-left-radius: 2px; }
-        .msg-time { font-size: 0.65rem; opacity: 0.6; margin-top: 4px; display: block; }
+        .msg { max-width: 85%; padding: 10px; border-radius: 10px; font-size: 0.9rem; line-height: 1.4; position: relative; }
+        .msg-user { align-self: flex-end; background: var(--user-msg); color: white; }
+        .msg-coach { align-self: flex-start; background: var(--coach-msg); color: var(--coach-text); border: 1px solid #fed7aa; }
+        .msg-time { font-size: 0.7rem; opacity: 0.6; display: block; margin-top: 4px; }
 
-        /* 任务清单区 */
+        /* 任务清单 */
         .task-list { display: flex; flex-direction: column; gap: 8px; }
-        .task-item { display: flex; align-items: center; background: #fff; padding: 12px 15px; border-radius: 12px; border: 1px solid var(--border); transition: 0.2s; }
-        .task-item.done { opacity: 0.5; transform: scale(0.98); background: #f8fafc; border-style: dashed; order: 100; }
-        .task-item.done .task-title { text-decoration: line-through; color: #94a3b8; }
-        .checkbox { width: 22px; height: 22px; border-radius: 50%; border: 2px solid var(--border); margin-right: 12px; cursor: pointer; flex-shrink: 0; display: flex; align-items: center; justify-content: center; }
-        .task-item.done .checkbox { background: var(--success); border-color: var(--success); color: white; }
-        .task-item.done .checkbox::after { content: '✓'; font-weight: bold; font-size: 11px; }
-        .task-title { flex: 1; font-weight: 600; font-size: 0.95rem; }
-        .del-btn { color: var(--danger); font-size: 0.7rem; background: #fff1f2; border: none; padding: 4px 8px; border-radius: 6px; cursor: pointer; }
+        .task-item { display: flex; align-items: center; background: #fff; padding: 12px; border-radius: 10px; border: 1px solid var(--border); }
+        .task-item.done { opacity: 0.5; background: #f1f5f9; border-style: dashed; order: 100; }
+        .checkbox { width: 20px; height: 20px; border-radius: 50%; border: 2px solid var(--border); margin-right: 10px; cursor: pointer; flex-shrink: 0; }
+        .task-item.done .checkbox { background: #10b981; border-color: #10b981; }
+        .task-title { flex: 1; font-weight: 500; font-size: 0.95rem; }
+        .done .task-title { text-decoration: line-through; }
 
-        /* 输入控制区 */
-        .input-card { background: var(--card); border-radius: 16px; border: 1px solid var(--border); padding: 12px; box-shadow: 0 -4px 15px rgba(0,0,0,0.05); }
-        .key-row { display: flex; gap: 8px; margin-bottom: 8px; }
-        .key-row input { flex: 1; padding: 8px; border-radius: 6px; border: 1px solid var(--border); font-size: 0.75rem; }
-        textarea { width: 100%; height: 50px; border: 1px solid #e2e8f0; border-radius: 8px; padding: 10px; resize: none; font-size: 0.95rem; outline: none; }
-        .ai-controls { display: flex; justify-content: space-between; align-items: center; margin-top: 8px; }
+        /* 输入区 */
+        .input-area { background: #fff; border: 1px solid var(--border); border-radius: 12px; padding: 12px; }
+        .key-row { display: flex; gap: 5px; margin-bottom: 8px; }
+        .key-row input { flex: 1; padding: 5px; font-size: 0.7rem; border: 1px solid var(--border); border-radius: 4px; }
+        textarea { width: 100%; height: 50px; border: 1px solid #e2e8f0; border-radius: 8px; padding: 8px; resize: none; font-size: 0.9rem; outline: none; }
+        .ai-btn { background: var(--primary); color: white; border: none; padding: 8px 20px; border-radius: 8px; font-weight: bold; cursor: pointer; float: right; margin-top: 5px; }
 
-        /* 辅助样式 */
         .loading { position: fixed; inset: 0; background: rgba(255,255,255,0.8); display: none; justify-content: center; align-items: center; z-index: 2000; }
-        .spinner { width: 26px; height: 26px; border: 3px solid #eee; border-top: 3px solid var(--primary); border-radius: 50%; animation: spin 1s linear infinite; }
-        @keyframes spin { to { transform: rotate(360deg); } }
     </style>
 </head>
 <body>
 
-    <div id="loginScreen" class="login-screen" style="position:fixed;inset:0;background:#1e3a8a;display:flex;justify-content:center;align-items:center;z-index:3000;">
-        <div style="background:white;padding:40px;border-radius:24px;text-align:center;width:85%;max-width:350px;">
-            <h1 style="font-size:3rem;margin-bottom:10px;">🛡️</h1>
-            <h2 style="color:#1e3a8a;margin-bottom:20px;">进化清单 Pro</h2>
-            <button onclick="login()" style="width:100%;padding:15px;background:var(--primary);color:white;border:none;border-radius:12px;font-weight:bold;cursor:pointer;">Google 登录</button>
+    <div id="loginScreen" style="position:fixed;inset:0;background:#1e3a8a;display:flex;justify-content:center;align-items:center;z-index:3000;">
+        <div style="background:white;padding:30px;border-radius:20px;text-align:center;width:80%;">
+            <h2>🧬 进化清单 Pro</h2>
+            <button onclick="login()" style="width:100%;padding:12px;background:#2563eb;color:white;border:none;border-radius:10px;font-weight:bold;">Google 登录</button>
         </div>
     </div>
 
-    <div id="loading" class="loading"><div class="spinner"></div></div>
+    <div id="loading" class="loading">加载中...</div>
 
     <div id="app" class="container" style="display: none;">
-        <div class="top-bar">
-            <h2 id="userName" style="font-size: 1rem;">我的教练</h2>
-            <button onclick="logout()" style="background:rgba(255,255,255,0.2); border:none; color:white; padding:4px 10px; border-radius:6px; font-size:0.75rem;">退出</button>
+        <div class="header">
+            <span id="userName" style="font-size: 0.9rem;">我的私教</span>
+            <button onclick="logout()" style="background:none;border:1px solid white;color:white;padding:2px 8px;border-radius:4px;font-size:0.7rem;">退出</button>
         </div>
 
         <div class="date-nav">
-            <button onclick="changeDate(-1)" style="border:none;background:none;font-size:1.2rem;cursor:pointer;">◀</button>
+            <button onclick="changeDate(-1)" style="border:none;background:none;cursor:pointer;">◀</button>
             <div id="dateDisplay" class="date-str"></div>
-            <button onclick="changeDate(1)" style="border:none;background:none;font-size:1.2rem;cursor:pointer;">▶</button>
+            <button onclick="changeDate(1)" style="border:none;background:none;cursor:pointer;">▶</button>
         </div>
 
-        <div class="section-title">💬 对话历史</div>
-        <div id="chatContainer" class="chat-container"></div>
+        <div style="font-size:0.8rem;color:#64748b;margin-left:5px;">💬 对话</div>
+        <div id="chatBox" class="chat-box"></div>
 
-        <div class="section-title">📋 今日任务</div>
+        <div style="font-size:0.8rem;color:#64748b;margin-left:5px;">📋 计划</div>
         <div id="taskList" class="task-list"></div>
 
-        <div class="input-card">
+        <div class="input-area">
             <div class="key-row">
                 <input type="password" id="apiKey" placeholder="在此粘贴 DeepSeek Key">
-                <button onclick="saveKey()" style="background:#e2e8f0;border:none;padding:0 10px;border-radius:6px;font-size:0.7rem;cursor:pointer;">保存Key</button>
+                <button onclick="saveKey()" style="font-size:0.7rem;padding:2px 5px;">保存Key</button>
             </div>
-            <textarea id="aiInput" placeholder="告诉教练你的感受，如：'我今天跑步了'"></textarea>
-            <div class="ai-controls">
-                <span id="aiStatus" style="font-size:0.7rem;color:#64748b;">AI 会根据对话调整任务</span>
-                <button id="aiBtn" onclick="processAI()" style="background:var(--primary);color:white;border:none;padding:8px 20px;border-radius:8px;font-weight:bold;cursor:pointer;">发送</button>
-            </div>
+            <textarea id="aiInput" placeholder="输入反馈（例如：我今天跑了3公里）"></textarea>
+            <button class="ai-btn" id="aiBtn" onclick="processAI()">发送</button>
+            <div style="clear:both;"></div>
         </div>
     </div>
 
@@ -127,9 +117,9 @@
                 document.getElementById('loginScreen').style.display = 'none';
                 document.getElementById('app').style.display = 'flex';
                 document.getElementById('userName').textContent = user.displayName;
-                const sk = localStorage.getItem('ds_key_final');
-                if(sk) document.getElementById('apiKey').value = sk;
-                initDateView(selectedDate);
+                const savedKey = localStorage.getItem('ds_key_v5');
+                if(savedKey) document.getElementById('apiKey').value = savedKey;
+                initView(selectedDate);
             } else {
                 document.getElementById('loginScreen').style.display = 'flex';
                 document.getElementById('app').style.display = 'none';
@@ -139,40 +129,44 @@
         window.login = () => signInWithPopup(auth, provider);
         window.logout = () => signOut(auth);
         window.saveKey = () => {
-            localStorage.setItem('ds_key_final', document.getElementById('apiKey').value.trim());
-            alert("Key 已永久保存");
+            localStorage.setItem('ds_key_v5', document.getElementById('apiKey').value.trim());
+            alert("Key 已保存");
         };
 
-        async function initDateView(dateStr) {
+        async function initView(dateStr) {
             document.getElementById('dateDisplay').textContent = dateStr;
             const uid = currentUser.uid;
             if (unsubT) unsubT(); if (unsubC) unsubC();
 
-            const taskCol = collection(db, `users/${uid}/tasks`);
-            const chatCol = collection(db, `users/${uid}/chats`);
+            const tCol = collection(db, `users/${uid}/tasks`);
+            const cCol = collection(db, `users/${uid}/chats`);
 
-            // 任务自动继承逻辑
-            const snapToday = await getDocs(query(taskCol, where("date", "==", dateStr)));
+            // 任务自动继承 (保持不变)
+            const snapToday = await getDocs(query(tCol, where("date", "==", dateStr)));
             if (snapToday.empty) {
                 document.getElementById('loading').style.display = 'flex';
-                const snapPast = await getDocs(query(taskCol, where("date", "<", dateStr), orderBy("date", "desc"), limit(1)));
+                const snapPast = await getDocs(query(tCol, where("date", "<", dateStr), orderBy("date", "desc"), limit(1)));
                 if (!snapPast.empty) {
-                    const lastD = snapPast.docs[0].data().date;
-                    const snapTasks = await getDocs(query(taskCol, where("date", "==", lastD)));
-                    const clones = snapTasks.docs.map(t => addDoc(taskCol, { title: t.data().title, date: dateStr, isDone: false, order: t.data().order || Date.now() }));
+                    const snapTasks = await getDocs(query(tCol, where("date", "==", snapPast.docs[0].data().date)));
+                    const clones = snapTasks.docs.map(t => addDoc(tCol, { title: t.data().title, date: dateStr, isDone: false, order: t.data().order || Date.now() }));
                     await Promise.all(clones);
                 }
                 document.getElementById('loading').style.display = 'none';
             }
 
-            unsubT = onSnapshot(query(taskCol, where("date", "==", dateStr)), (snap) => {
+            // 实时任务监听
+            unsubT = onSnapshot(query(tCol, where("date", "==", dateStr)), (snap) => {
                 currentTasks = snap.docs.map(d => ({id: d.id, ...d.data()}));
                 currentTasks.sort((a,b) => a.isDone - b.isDone || a.order - b.order);
                 renderTasks(currentTasks);
             });
 
-            unsubC = onSnapshot(query(chatCol, where("date", "==", dateStr), orderBy("timestamp", "asc")), (snap) => {
-                const chats = snap.docs.map(d => d.data());
+            // 实时对话监听 - 核心修改：移除 date 的 where 查询，避免索引问题
+            // 只按时间排序，然后在渲染时通过 JS 过滤日期
+            unsubC = onSnapshot(query(cCol, orderBy("timestamp", "asc")), (snap) => {
+                const chats = snap.docs
+                    .map(d => ({id: d.id, ...d.data()}))
+                    .filter(c => c.date === selectedDate); // 在前端过滤日期
                 renderChats(chats);
             });
         }
@@ -183,26 +177,25 @@
                 <div class="task-item ${t.isDone ? 'done' : ''}">
                     <div class="checkbox" onclick="toggleTask('${t.id}', ${t.isDone})"></div>
                     <div class="task-title">${t.title}</div>
-                    <button class="del-btn" onclick="deleteTask('${t.id}')">删除</button>
+                    <button style="color:red;border:none;background:none;font-size:0.6rem;cursor:pointer;" onclick="deleteTask('${t.id}')">删除</button>
                 </div>
             `).join('');
         }
 
         function renderChats(chats) {
-            const el = document.getElementById('chatContainer');
+            const el = document.getElementById('chatBox');
             el.innerHTML = chats.map(c => {
-                // 处理服务器时间戳尚未返回的情况
-                const time = c.timestamp ? new Date(c.timestamp.seconds * 1000).toLocaleTimeString([], {hour:'2-digit', minute:'2-digit'}) : '刚刚';
+                const time = c.timestamp ? new Date(c.timestamp.seconds * 1000).toLocaleTimeString([], {hour:'2-digit', minute:'2-digit'}) : '...';
                 return `<div class="msg msg-${c.role}">${c.text}<span class="msg-time">${time}</span></div>`;
             }).join('');
             el.scrollTop = el.scrollHeight;
         }
 
         window.toggleTask = async (id, s) => updateDoc(doc(db, `users/${currentUser.uid}/tasks`, id), { isDone: !s });
-        window.deleteTask = async (id) => { if(confirm("彻底删除？")) await deleteDoc(doc(db, `users/${currentUser.uid}/tasks`, id)); };
+        window.deleteTask = async (id) => { if(confirm("确定删除？")) await deleteDoc(doc(db, `users/${currentUser.uid}/tasks`, id)); };
         window.changeDate = (os) => {
             const d = new Date(selectedDate); d.setDate(d.getDate() + os);
-            selectedDate = d.toISOString().split('T')[0]; initDateView(selectedDate);
+            selectedDate = d.toISOString().split('T')[0]; initView(selectedDate);
         };
 
         window.processAI = async () => {
@@ -216,12 +209,13 @@
             const chatCol = collection(db, `users/${uid}/chats`);
 
             try {
-                // 1. 先保存用户消息
+                // 1. 发送用户消息
                 await addDoc(chatCol, { role: 'user', text: input, date: selectedDate, timestamp: serverTimestamp() });
 
-                const taskCtx = currentTasks.map(t => `${t.title}(${t.isDone ? '完成' : '未做'})`).join(', ');
+                // 2. 构造上下文
+                const taskContext = currentTasks.map(t => `${t.title}(${t.isDone ? '已完成' : '未完成'})`).join(', ');
 
-                // 2. 请求 AI (加强提示词，防止误删)
+                // 3. 请求 AI (严格的指令过滤)
                 const res = await fetch("https://api.deepseek.com/chat/completions", {
                     method: "POST",
                     headers: { "Content-Type": "application/json", "Authorization": `Bearer ${key}` },
@@ -230,13 +224,13 @@
                         messages: [
                             {
                                 role: "system", 
-                                content: `你是资深健身教练。
-                                规则：
-                                1. 保护原则：严禁随意删除已有任务。除非用户说“不要练了”或“删除”，否则不要动原有日程。
-                                2. 补充原则：如果用户做了额外运动（如跑步），给予鼓励并建议是否需要加练，而不是替换原有任务。
-                                3. 返回 JSON：{"coach_reply": "100字内对话", "changes": [{"action": "ADD"|"DELETE", "title": "任务名"}]}`
+                                content: `你是一个专业的健身教练助手。
+                                核心原则：
+                                1. 除非用户明确要求（如“加一个任务”、“删除那个”、“今天我要练...”），否则严禁修改清单。
+                                2. 如果用户只是汇报状态（如“我跑了步”、“我今天很开心”），只需聊天鼓励，changes数组保持为空[]。
+                                3. 如果需要修改，只输出JSON：{"coach_reply": "对话文字", "changes": [{"action": "ADD"|"DELETE", "title": "任务名"}]}`
                             },
-                            {role: "user", content: `今日已有计划：[${taskCtx}]。学员反馈：${input}`}
+                            {role: "user", content: `当前清单：[${taskContext}]。用户反馈：${input}`}
                         ],
                         response_format: { type: "json_object" }
                     })
@@ -245,22 +239,25 @@
                 const data = await res.json();
                 const result = JSON.parse(data.choices[0].message.content);
 
-                // 3. 保存教练回复
+                // 4. 保存教练回复
                 await addDoc(chatCol, { role: 'coach', text: result.coach_reply, date: selectedDate, timestamp: serverTimestamp() });
 
-                // 4. 执行变更
+                // 5. 执行变更
                 const taskCol = collection(db, `users/${uid}/tasks`);
-                for (const c of result.changes) {
-                    if (c.action === 'ADD') {
-                        await addDoc(taskCol, { title: c.title, date: selectedDate, isDone: false, order: Date.now() });
-                    } else if (c.action === 'DELETE') {
-                        const snap = await getDocs(query(taskCol, where("date", "==", selectedDate), where("title", "==", c.title)));
-                        snap.docs.forEach(d => deleteDoc(d.ref));
+                if (result.changes && result.changes.length > 0) {
+                    for (const c of result.changes) {
+                        if (c.action === 'ADD') {
+                            await addDoc(taskCol, { title: c.title, date: selectedDate, isDone: false, order: Date.now() });
+                        } else if (c.action === 'DELETE') {
+                            const snap = await getDocs(query(taskCol, where("date", "==", selectedDate), where("title", "==", c.title)));
+                            snap.docs.forEach(d => deleteDoc(d.ref));
+                        }
                     }
                 }
                 document.getElementById('aiInput').value = "";
             } catch (e) {
-                alert("AI 暂时离线: " + e.message);
+                console.error(e);
+                alert("出错: " + e.message);
             } finally {
                 btn.disabled = false; btn.textContent = "发送";
             }
