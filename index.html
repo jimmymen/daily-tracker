@@ -90,7 +90,7 @@
         </div>
     </div>
 
-    <!-- 书架/录入对话框逻辑同前，为节省篇幅略作整合，功能完整 -->
+    <!-- 书架/录入对话框 -->
     <div id="addQuoteModal" class="modal-overlay" onclick="if(event.target===this) closeAddQuoteModal()">
         <div class="modal-content">
             <h3 id="quoteModalTitle" style="margin-top:0">🖋️ 录入摘抄</h3>
@@ -210,7 +210,7 @@
             alert("✨ 云端同步成功！");
         };
 
-        // --- 摘抄系统代码 (完整保留) ---
+        // --- 摘抄系统代码 ---
         async function syncQuotes() {
             const qSnap = await getDocs(query(collection(db, `users/${currentUser.uid}/quotes`), orderBy("timestamp", "desc")));
             quotesCache = qSnap.docs.map(d => ({id: d.id, ...d.data()}));
@@ -246,34 +246,54 @@
         };
         window.deleteQuote = async (id) => { if (confirm("从书架移除？")) { await deleteDoc(doc(db, `users/${currentUser.uid}/quotes`, id)); await syncQuotes(); renderManageQuotes(); } };
 
-        // --- 核心任务系统修复 ---
+        // --- 核心任务与聊天 ---
         async function initView(dateStr) {
             document.getElementById('dateDisplay').textContent = dateStr;
             const uid = currentUser.uid;
-            if (unsubT) unsubT(); if (unsubC) unsubC();
+
+            // 1. 清理旧监听
+            if (unsubT) unsubT(); 
+            if (unsubC) unsubC();
+            
+            // 2. 关键：切换日期时立即清空聊天缓存，防止视觉和逻辑上继承上一天的内容
+            chatsCache = []; 
+            document.getElementById('chatBox').innerHTML = '<div style="text-align:center;padding-top:80px;color:#cbd5e1;font-size:0.8rem;">加载中...</div>';
+
             const tCol = collection(db, `users/${uid}/tasks`);
             const cCol = collection(db, `users/${uid}/chats`);
 
-            // 自动检查今日清单，如果完全没数据，执行继承
+            // 任务逻辑（保持不变：如果今天没任务，尝试从昨天继承）
             const snapToday = await getDocs(query(tCol, where("date", "==", dateStr)));
             if (snapToday.empty) {
                 await doInheritTasks(dateStr, false);
             }
 
+            // 监听任务（保持不变）
             unsubT = onSnapshot(query(tCol, where("date", "==", dateStr)), (snap) => {
                 currentTasks = snap.docs.map(d => ({id: d.id, ...d.data()}));
                 currentTasks.sort((a,b) => a.isDone - b.isDone || a.order - b.order);
                 renderTasks();
             });
 
-            unsubC = onSnapshot(query(cCol, orderBy("timestamp", "asc")), (snap) => {
-                chatsCache = snap.docs.map(d => ({id: d.id, ...d.data()})).filter(c => c.date === selectedDate);
+            // 监听聊天（修改：只查询 date == dateStr）
+            // 我们去掉 orderBy，改为前端排序，这样可以避免复杂的索引报错
+            unsubC = onSnapshot(query(cCol, where("date", "==", dateStr)), (snap) => {
+                chatsCache = snap.docs.map(d => ({id: d.id, ...d.data()}));
+                
+                // 前端按时间戳排序
+                chatsCache.sort((a, b) => {
+                    const tA = a.timestamp ? a.timestamp.seconds : 9999999999;
+                    const tB = b.timestamp ? b.timestamp.seconds : 9999999999;
+                    return tA - tB;
+                });
+                
                 renderChats(chatsCache);
             });
+
             displayQuoteByDay();
         }
 
-        // 统一的继承逻辑函数
+        // 统一的继承逻辑函数（保持不变）
         async function doInheritTasks(targetDate, isForce) {
             const tCol = collection(db, `users/${currentUser.uid}/tasks`);
             const snapPast = await getDocs(query(tCol, where("date", "<", targetDate), orderBy("date", "desc"), limit(1)));
@@ -349,6 +369,7 @@
         window.clearChats = async () => {
             if (confirm("清空对话记录？")) {
                 const batch = writeBatch(db);
+                // 这里的 chatsCache 现在只包含当天的聊天，所以只会删除当天的
                 chatsCache.forEach(c => batch.delete(doc(db, `users/${currentUser.uid}/chats`, c.id)));
                 await batch.commit();
             }
@@ -372,6 +393,7 @@
                     return;
                 }
 
+                // AI 上下文现在只取 chatsCache，而 chatsCache 只包含当天的内容
                 const history = chatsCache.slice(-5).map(c => ({ role: c.role === 'coach' ? 'assistant' : 'user', content: c.text }));
                 await addDoc(chatCol, { role: 'user', text: input, date: selectedDate, timestamp: serverTimestamp() });
 
