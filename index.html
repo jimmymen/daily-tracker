@@ -3,12 +3,13 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
-    <title>进化清单 Pro - 灵感摘抄版</title>
+    <title>进化清单 Pro - 书架管理版</title>
     <style>
         :root {
             --primary: #3b82f6; --bg: #fdfdfd; --border: #e2e8f0;
             --user-msg: #3b82f6; --coach-bg: #fff1f2; --coach-text: #9f1239;
             --quote-bg: #f0f9ff; --quote-text: #0369a1;
+            --danger: #ef4444;
         }
         * { box-sizing: border-box; -webkit-tap-highlight-color: transparent; }
         body { font-family: "PingFang SC", "Microsoft YaHei", serif; background: var(--bg); margin: 0; padding: 8px; color: #1e293b; }
@@ -18,15 +19,16 @@
         /* 顶部导航 */
         .header { background: linear-gradient(135deg, #2563eb, #3b82f6); color: white; padding: 12px 20px; border-radius: 15px; display: flex; justify-content: space-between; align-items: center; }
         
-        /* --- 新增：金句展示卡片 --- */
+        /* 金句展示卡片 */
         .quote-card { 
             background: var(--quote-bg); border: 1px dashed #bae6fd; border-radius: 15px; 
             padding: 15px; text-align: center; cursor: pointer; transition: 0.3s;
-            min-height: 60px; display: flex; flex-direction: column; justify-content: center;
+            min-height: 80px; display: flex; flex-direction: column; justify-content: center; position: relative;
         }
-        .quote-card:active { transform: scale(0.98); background: #e0f2fe; }
-        #quoteText { font-size: 0.95rem; color: var(--quote-text); font-style: italic; font-weight: 500; margin-bottom: 5px; }
+        .quote-card:active { transform: scale(0.98); }
+        #quoteText { font-size: 0.95rem; color: var(--quote-text); font-style: italic; font-weight: 500; margin-bottom: 5px; padding: 0 20px; }
         #quoteBook { font-size: 0.75rem; color: #64748b; }
+        .quote-manage-hint { position: absolute; bottom: 8px; right: 12px; font-size: 0.7rem; color: #3b82f6; opacity: 0.6; }
 
         .date-nav-wrapper { display: flex; align-items: center; gap: 10px; background: #fff; padding: 8px 15px; border-radius: 12px; border: 1px solid var(--border); }
         .date-str { font-weight: 800; color: var(--primary); font-size: 0.9rem; }
@@ -38,7 +40,7 @@
             .chat-box { height: calc(100vh - 420px) !important; }
         }
 
-        /* 列表区域 */
+        /* 清单区域 */
         .task-section { background: white; border: 1px solid var(--border); border-radius: 15px; padding: 12px; }
         .list-header { display: flex; justify-content: space-between; align-items: center; margin-bottom: 10px; }
         .task-list { display: flex; flex-direction: column; gap: 8px; }
@@ -63,8 +65,17 @@
 
         /* 弹窗设计 */
         .modal-overlay { position: fixed; inset: 0; background: rgba(0,0,0,0.3); backdrop-filter: blur(4px); display: none; justify-content: center; align-items: center; z-index: 5000; }
-        .modal-content { background: white; width: 90%; max-width: 400px; padding: 20px; border-radius: 20px; box-shadow: 0 10px 30px rgba(0,0,0,0.2); }
+        .modal-content { background: white; width: 95%; max-width: 450px; padding: 20px; border-radius: 20px; max-height: 85vh; overflow-y: auto; }
+        
+        /* 书架管理列表样式 */
+        .quote-manage-item { border-bottom: 1px solid #f1f5f9; padding: 10px 0; display: flex; flex-direction: column; gap: 5px; }
+        .q-text { font-size: 0.9rem; color: #334155; line-height: 1.4; }
+        .q-meta { font-size: 0.75rem; color: #94a3b8; display: flex; justify-content: space-between; align-items: center; }
+        .q-btns { display: flex; gap: 10px; }
+
         .small-btn { font-size: 0.7rem; padding: 4px 10px; border-radius: 8px; border: 1px solid var(--border); background: white; cursor: pointer; color: #64748b; }
+        .edit-btn { color: #3b82f6; border-color: #dbeafe; }
+        .del-btn { color: var(--danger); border-color: #fee2e2; }
     </style>
 </head>
 <body>
@@ -73,16 +84,16 @@
     <div id="loginScreen" style="position:fixed;inset:0;background:#3b82f6;display:flex;justify-content:center;align-items:center;z-index:9000;">
         <div style="background:white;padding:35px;border-radius:25px;text-align:center;width:85%;max-width:300px;">
             <h1 style="font-size:3rem;margin:0">📚</h1>
-            <h2 style="color:#1e40af;margin-top:5px;">进化清单 Pro</h2>
-            <button onclick="login()" style="width:100%;padding:15px;background:#3b82f6;color:white;border:none;border-radius:12px;font-weight:bold;cursor:pointer;">Google 登录</button>
+            <h2>进化清单 Pro</h2>
+            <button onclick="login()" style="width:100%;padding:15px;background:#3b82f6;color:white;border:none;border-radius:12px;font-weight:bold;">Google 登录</button>
         </div>
     </div>
 
-    <!-- 任务录入弹窗 -->
+    <!-- 任务录入 -->
     <div id="addTaskModal" class="modal-overlay" onclick="if(event.target===this) closeAddTaskModal()">
         <div class="modal-content">
-            <h3 style="margin-top:0">🆕 新增训练</h3>
-            <input type="text" id="manualTaskInput" style="width:100%;padding:12px;border:1px solid var(--border);border-radius:10px;margin-bottom:15px;" placeholder="例如：慢跑 3公里" onkeyup="if(event.key==='Enter') saveTaskManual()">
+            <h3 style="margin-top:0">🆕 新增任务</h3>
+            <input type="text" id="manualTaskInput" style="width:100%;padding:12px;border:1px solid var(--border);border-radius:10px;margin-bottom:15px;" placeholder="例如：深蹲 20个" onkeyup="if(event.key==='Enter') saveTaskManual()">
             <div style="display:flex;justify-content:flex-end;gap:8px;">
                 <button class="small-btn" onclick="closeAddTaskModal()">取消</button>
                 <button class="ai-btn" style="margin:0" onclick="saveTaskManual()">确认</button>
@@ -90,15 +101,29 @@
         </div>
     </div>
 
-    <!-- 新增：书摘录入弹窗 -->
+    <!-- 书摘录入/编辑弹窗 -->
     <div id="addQuoteModal" class="modal-overlay" onclick="if(event.target===this) closeAddQuoteModal()">
         <div class="modal-content">
-            <h3 style="margin-top:0">🖋️ 录入摘抄</h3>
-            <textarea id="quoteInput" style="width:100%; height:80px; margin-bottom:10px; background:#f8fafc;" placeholder="在这里粘贴书上的精彩句子..."></textarea>
+            <h3 id="quoteModalTitle" style="margin-top:0">🖋️ 录入摘抄</h3>
+            <input type="hidden" id="editingQuoteId">
+            <textarea id="quoteInput" style="width:100%; height:100px; margin-bottom:10px; background:#f8fafc; border:1px solid var(--border); border-radius:10px; padding:10px;" placeholder="粘贴精彩句子..."></textarea>
             <input type="text" id="quoteSource" style="width:100%;padding:10px;border:1px solid var(--border);border-radius:10px;margin-bottom:15px;" placeholder="来源（书名/作者）">
             <div style="display:flex;justify-content:flex-end;gap:8px;">
                 <button class="small-btn" onclick="closeAddQuoteModal()">取消</button>
-                <button class="ai-btn" style="margin:0; background:#0891b2" onclick="saveQuoteManual()">存入书架</button>
+                <button id="saveQuoteBtn" class="ai-btn" style="margin:0; background:#0891b2" onclick="saveQuoteManual()">保存到云端</button>
+            </div>
+        </div>
+    </div>
+
+    <!-- 书架管理弹窗 -->
+    <div id="manageQuotesModal" class="modal-overlay" onclick="if(event.target===this) closeManageQuotesModal()">
+        <div class="modal-content">
+            <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:15px; border-bottom:2px solid #f1f5f9; padding-bottom:10px;">
+                <h3 style="margin:0">📖 我的书架</h3>
+                <button class="small-btn" onclick="closeManageQuotesModal()">关闭</button>
+            </div>
+            <div id="quotesManageList">
+                <!-- 列表动态加载 -->
             </div>
         </div>
     </div>
@@ -109,17 +134,18 @@
         <div class="header">
             <span id="userName" style="font-size: 0.9rem; font-weight: bold;">你好</span>
             <div style="display: flex; align-items: center; gap: 12px;">
-                <button title="录入书摘" style="border:none;background:none;font-size:1.3rem;cursor:pointer;" onclick="openAddQuoteModal()">🖋️</button>
+                <button title="书架管理" style="border:none;background:none;font-size:1.3rem;cursor:pointer;" onclick="openManageQuotesModal()">📖</button>
+                <button title="新录入" style="border:none;background:none;font-size:1.3rem;cursor:pointer;" onclick="openAddQuoteModal()">🖋️</button>
                 <button style="border:none;background:none;font-size:1.3rem;cursor:pointer;" onclick="document.getElementById('hiddenDatePicker').showPicker()">📅</button>
                 <input type="date" id="hiddenDatePicker" style="position:absolute;width:0;height:0;opacity:0;" onchange="jumpToDate(this.value)">
                 <button class="small-btn" onclick="logout()" style="color:white; border-color:white; background:transparent;">退出</button>
             </div>
         </div>
 
-        <!-- 摘抄展示卡片 -->
-        <div class="quote-card" onclick="refreshQuote()" title="点击刷新摘抄">
-            <div id="quoteText">“点击右上方🖋️录入你的第一条书摘吧”</div>
+        <div class="quote-card" onclick="refreshQuote()">
+            <div id="quoteText">“加载摘抄中...”</div>
             <div id="quoteBook">—— 进化私教</div>
+            <span class="quote-manage-hint">点击刷新 ⟳</span>
         </div>
 
         <div class="date-nav-wrapper">
@@ -129,29 +155,16 @@
         </div>
 
         <div class="main-content">
-            <!-- 任务清单 -->
             <div class="task-section">
-                <div class="list-header">
-                    <span style="font-size:0.8rem;color:#64748b;font-weight:bold;">📋 任务清单</span>
-                    <button class="ai-btn" style="margin:0; padding:4px 10px; font-size:0.7rem;" onclick="openAddTaskModal()">+ 手动增加</button>
-                </div>
+                <div class="list-header"><span style="font-size:0.8rem;color:#64748b;font-weight:bold;">📋 训练任务</span><button class="ai-btn" style="margin:0; padding:4px 10px; font-size:0.7rem;" onclick="openAddTaskModal()">+ 增加</button></div>
                 <div id="taskList" class="task-list"></div>
             </div>
-
-            <!-- 聊天对话 -->
             <div class="chat-section">
-                <div style="display:flex; justify-content:space-between; align-items:center;">
-                    <span style="font-size:0.8rem;color:#64748b;font-weight:bold;">💬 健身搭子</span>
-                    <button class="small-btn" style="color:red; border-color:#fee2e2;" onclick="clearChats()">清空闲聊</button>
-                </div>
+                <div style="display:flex; justify-content:space-between; align-items:center;"><span style="font-size:0.8rem;color:#64748b;font-weight:bold;">💬 健身搭子</span><button class="small-btn" style="color:red; border-color:#fee2e2;" onclick="clearChats()">清空闲聊</button></div>
                 <div id="chatBox" class="chat-box"></div>
-
                 <div class="input-area">
-                    <div style="display:flex; gap:8px; margin-bottom:8px;">
-                        <input type="password" id="apiKey" placeholder="在此粘贴你的 Key" style="flex:1; padding:5px 10px; border:1px solid var(--border); border-radius:8px; font-size:0.7rem;">
-                        <button class="small-btn" onclick="saveKeyToFirebase()">存云端</button>
-                    </div>
-                    <textarea id="aiInput" placeholder="练完了？来聊聊感受吧！(或说：摘抄：[内容])"></textarea>
+                    <div style="display:flex; gap:8px; margin-bottom:8px;"><input type="password" id="apiKey" placeholder="在此粘贴你的 Key" style="flex:1; padding:5px 10px; border:1px solid var(--border); border-radius:8px; font-size:0.7rem;"><button class="small-btn" onclick="saveKeyToFirebase()">存云端</button></div>
+                    <textarea id="aiInput" placeholder="聊聊感受吧..."></textarea>
                     <button class="ai-btn" id="aiBtn" onclick="processAI()">发送</button>
                 </div>
             </div>
@@ -182,7 +195,7 @@
         let unsubT = null, unsubC = null;
         let currentTasks = [];
         let chatsCache = [];
-        let quotesList = []; // 存储所有摘抄
+        let quotesCache = []; 
 
         onAuthStateChanged(auth, async (user) => {
             if (user) {
@@ -191,7 +204,7 @@
                 document.getElementById('app').style.display = 'flex';
                 document.getElementById('userName').textContent = `你好, ${user.displayName.split(' ')[0]}`;
                 await loadKey();
-                await loadQuotes(); // 加载摘抄
+                await syncQuotes(); 
                 initView(selectedDate);
             } else {
                 document.getElementById('loginScreen').style.display = 'flex';
@@ -210,48 +223,112 @@
         window.saveKeyToFirebase = async () => {
             const key = document.getElementById('apiKey').value.trim();
             await setDoc(doc(db, `users/${currentUser.uid}/settings`, "deepseek"), { apiKey: key, updatedAt: serverTimestamp() });
-            alert("✨ 云端同步成功！");
+            alert("✨ 同步成功！");
         };
 
-        // --- 摘抄逻辑 ---
-        async function loadQuotes() {
-            const qSnap = await getDocs(collection(db, `users/${currentUser.uid}/quotes`));
-            quotesList = qSnap.docs.map(d => d.data());
-            displayQuoteByDay(); // 默认按天显示
+        // --- 摘抄管理逻辑 ---
+        async function syncQuotes() {
+            const qSnap = await getDocs(query(collection(db, `users/${currentUser.uid}/quotes`), orderBy("timestamp", "desc")));
+            quotesCache = qSnap.docs.map(d => ({id: d.id, ...d.data()}));
+            displayQuoteByDay();
         }
 
         function displayQuoteByDay() {
-            if (quotesList.length === 0) return;
-            // 使用日期字符串作为随机种子，保证同一天显示同一句
+            if (quotesCache.length === 0) {
+                document.getElementById('quoteText').textContent = "还没有录入书摘哦";
+                document.getElementById('quoteBook').textContent = "";
+                return;
+            }
             const seed = selectedDate.replace(/-/g, '');
-            const index = parseInt(seed) % quotesList.length;
-            const quote = quotesList[index];
-            document.getElementById('quoteText').textContent = `“${quote.text}”`;
-            document.getElementById('quoteBook').textContent = `—— ${quote.source || '未知来源'}`;
+            const index = parseInt(seed) % quotesCache.length;
+            const q = quotesCache[index];
+            document.getElementById('quoteText').textContent = `“${q.text}”`;
+            document.getElementById('quoteBook').textContent = `—— ${q.source || '未知'}`;
         }
 
         window.refreshQuote = () => {
-            if (quotesList.length === 0) return;
-            const randomIndex = Math.floor(Math.random() * quotesList.length);
-            const quote = quotesList[randomIndex];
-            document.getElementById('quoteText').textContent = `“${quote.text}”`;
-            document.getElementById('quoteBook').textContent = `—— ${quote.source || '未知来源'}`;
+            if (quotesCache.length === 0) return;
+            const q = quotesCache[Math.floor(Math.random() * quotesCache.length)];
+            document.getElementById('quoteText').textContent = `“${q.text}”`;
+            document.getElementById('quoteBook').textContent = `—— ${q.source || '未知'}`;
         };
 
-        window.openAddQuoteModal = () => document.getElementById('addQuoteModal').style.display = 'flex';
+        window.openAddQuoteModal = () => {
+            document.getElementById('editingQuoteId').value = "";
+            document.getElementById('quoteModalTitle').textContent = "🖋️ 录入摘抄";
+            document.getElementById('quoteInput').value = "";
+            document.getElementById('quoteSource').value = "";
+            document.getElementById('addQuoteModal').style.display = 'flex';
+        };
+
         window.closeAddQuoteModal = () => document.getElementById('addQuoteModal').style.display = 'none';
+
         window.saveQuoteManual = async () => {
             const text = document.getElementById('quoteInput').value.trim();
             const source = document.getElementById('quoteSource').value.trim();
+            const qId = document.getElementById('editingQuoteId').value;
             if (!text) return;
-            await addDoc(collection(db, `users/${currentUser.uid}/quotes`), { text, source, timestamp: serverTimestamp() });
-            await loadQuotes();
+            
+            document.getElementById('loading').style.display = 'flex';
+            const colRef = collection(db, `users/${currentUser.uid}/quotes`);
+            
+            if (qId) {
+                await updateDoc(doc(db, `users/${currentUser.uid}/quotes`, qId), { text, source });
+            } else {
+                await addDoc(colRef, { text, source, timestamp: serverTimestamp() });
+            }
+            
+            await syncQuotes();
             closeAddQuoteModal();
-            document.getElementById('quoteInput').value = '';
-            document.getElementById('quoteSource').value = '';
+            document.getElementById('loading').style.display = 'none';
         };
 
-        // --- 视图初始化与任务逻辑 ---
+        window.openManageQuotesModal = () => {
+            renderManageQuotes();
+            document.getElementById('manageQuotesModal').style.display = 'flex';
+        };
+
+        window.closeManageQuotesModal = () => document.getElementById('manageQuotesModal').style.display = 'none';
+
+        function renderManageQuotes() {
+            const listEl = document.getElementById('quotesManageList');
+            if (quotesCache.length === 0) {
+                listEl.innerHTML = "<p style='text-align:center;color:#94a3b8;'>书架空空如也</p>";
+                return;
+            }
+            listEl.innerHTML = quotesCache.map(q => `
+                <div class="quote-manage-item">
+                    <div class="q-text">${q.text}</div>
+                    <div class="q-meta">
+                        <span>📖 ${q.source || '未知'}</span>
+                        <div class="q-btns">
+                            <button class="small-btn edit-btn" onclick="editQuote('${q.id}')">编辑</button>
+                            <button class="small-btn del-btn" onclick="deleteQuote('${q.id}')">删除</button>
+                        </div>
+                    </div>
+                </div>
+            `).join('');
+        }
+
+        window.editQuote = (id) => {
+            const q = quotesCache.find(x => x.id === id);
+            if (!q) return;
+            document.getElementById('editingQuoteId').value = q.id;
+            document.getElementById('quoteModalTitle').textContent = "✏️ 修改摘抄";
+            document.getElementById('quoteInput').value = q.text;
+            document.getElementById('quoteSource').value = q.source || "";
+            document.getElementById('manageQuotesModal').style.display = 'none';
+            document.getElementById('addQuoteModal').style.display = 'flex';
+        };
+
+        window.deleteQuote = async (id) => {
+            if (!confirm("确定从书架移除这段话吗？")) return;
+            await deleteDoc(doc(db, `users/${currentUser.uid}/quotes`, id));
+            await syncQuotes();
+            renderManageQuotes();
+        };
+
+        // --- 任务/视图逻辑 ---
         async function initView(dateStr) {
             document.getElementById('dateDisplay').textContent = dateStr;
             const uid = currentUser.uid;
@@ -264,8 +341,8 @@
                 document.getElementById('loading').style.display = 'flex';
                 const snapPast = await getDocs(query(tCol, where("date", "<", dateStr), orderBy("date", "desc"), limit(1)));
                 if (!snapPast.empty) {
-                    const lastTasks = await getDocs(query(tCol, where("date", "==", snapPast.docs[0].data().date)));
-                    await Promise.all(lastTasks.docs.map(t => addDoc(tCol, { title: t.data().title, date: dateStr, isDone: false, order: t.data().order || Date.now() })));
+                    const snapTasks = await getDocs(query(tCol, where("date", "==", snapPast.docs[0].data().date)));
+                    await Promise.all(snapTasks.docs.map(t => addDoc(tCol, { title: t.data().title, date: dateStr, isDone: false, order: t.data().order || Date.now() })));
                 }
                 document.getElementById('loading').style.display = 'none';
             }
@@ -280,7 +357,7 @@
                 chatsCache = snap.docs.map(d => ({id: d.id, ...d.data()})).filter(c => c.date === selectedDate);
                 renderChats(chatsCache);
             });
-            displayQuoteByDay(); // 切换日期时更新每日一语
+            displayQuoteByDay(); 
         }
 
         function renderTasks() {
@@ -307,12 +384,13 @@
         };
 
         window.openAddTaskModal = () => { document.getElementById('addTaskModal').style.display = 'flex'; document.getElementById('manualTaskInput').focus(); };
-        window.closeAddTaskModal = () => { document.getElementById('addTaskModal').style.display = 'none'; document.getElementById('manualTaskInput').value = ''; };
+        window.closeAddTaskModal = () => document.getElementById('addTaskModal').style.display = 'none';
         window.saveTaskManual = async () => {
             const title = document.getElementById('manualTaskInput').value.trim();
             if (title) {
                 await addDoc(collection(db, `users/${currentUser.uid}/tasks`), { title, date: selectedDate, isDone: false, order: Date.now() });
                 closeAddTaskModal();
+                document.getElementById('manualTaskInput').value = "";
             }
         };
 
@@ -327,7 +405,6 @@
             }
         };
 
-        // --- AI 处理 ---
         window.processAI = async () => {
             const input = document.getElementById('aiInput').value.trim();
             const key = document.getElementById('apiKey').value.trim();
@@ -336,19 +413,17 @@
             const chatCol = collection(db, `users/${currentUser.uid}/chats`);
 
             try {
-                // 1. 拦截“摘抄”指令，无需请求 AI
                 if (input.startsWith("摘抄：") || input.startsWith("摘抄:")) {
                     const text = input.replace(/摘抄：|摘抄:/, "").trim();
                     await addDoc(collection(db, `users/${currentUser.uid}/quotes`), { text, source: "对话录入", timestamp: serverTimestamp() });
-                    await loadQuotes();
+                    await syncQuotes();
                     await addDoc(chatCol, { role: 'user', text: input, date: selectedDate, timestamp: serverTimestamp() });
-                    await addDoc(chatCol, { role: 'coach', text: "✨ 收到！这段话已经帮你存入书架了。", date: selectedDate, timestamp: serverTimestamp() });
+                    await addDoc(chatCol, { role: 'coach', text: "✨ 收到！已经帮你存入书架了，可以在管理界面修改它。", date: selectedDate, timestamp: serverTimestamp() });
                     document.getElementById('aiInput').value = "";
                     return;
                 }
 
-                // 2. 正常 AI 对话
-                const history = chatsCache.slice(-4).map(c => ({ role: c.role === 'coach' ? 'assistant' : 'user', content: c.text }));
+                const history = chatsCache.slice(-6).map(c => ({ role: c.role === 'coach' ? 'assistant' : 'user', content: c.text }));
                 await addDoc(chatCol, { role: 'user', text: input, date: selectedDate, timestamp: serverTimestamp() });
 
                 const res = await fetch("https://api.deepseek.com/chat/completions", {
@@ -357,9 +432,9 @@
                     body: JSON.stringify({
                         model: "deepseek-chat",
                         messages: [
-                            { role: "system", content: "你是一个幽默阳光的健身搭子。联系历史记录和当前任务聊天。除非用户明确说加/删，否则不改清单。JSON格式回复。" },
+                            { role: "system", content: "你是一个幽默阳光的健身搭子。多用表情包。除非用户明确说加/删，否则不改清单。JSON格式回复。" },
                             ...history,
-                            { role: "user", content: `(当前任务状态：[${currentTasks.map(t=>t.title + (t.isDone?'已搞定':'未做')).join(',')}])。用户：${input}` }
+                            { role: "user", content: `(任务：[${currentTasks.map(t=>t.title + (t.isDone?'搞定':'未做')).join(',')}])。用户：${input}` }
                         ],
                         response_format: { type: "json_object" }
                     })
