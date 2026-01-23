@@ -138,3 +138,167 @@
 
         // --- 核心逻辑：云端 Key 管理 ---
         async function loadKeyFromFirebase() {
+            try {
+                const keyDoc = await getDoc(doc(db, `users/${currentUser.uid}/settings`, "deepseek"));
+                if (keyDoc.exists()) {
+                    const key = keyDoc.data().apiKey;
+                    document.getElementById('apiKey').value = key;
+                    console.log("已从云端恢复 API Key");
+                }
+            } catch (e) {
+                console.error("加载 Key 失败:", e);
+            }
+        }
+
+        window.saveKeyToFirebase = async () => {
+            const key = document.getElementById('apiKey').value.trim();
+            if (!key) return alert("请输入内容再保存");
+            
+            const btn = document.getElementById('saveKeyBtn');
+            btn.textContent = "保存中...";
+            try {
+                await setDoc(doc(db, `users/${currentUser.uid}/settings`, "deepseek"), {
+                    apiKey: key,
+                    updatedAt: serverTimestamp()
+                });
+                alert("API Key 已安全保存到云端");
+            } catch (e) {
+                alert("保存失败: " + e.message);
+            } finally {
+                btn.textContent = "保存到云端";
+            }
+        };
+
+        // --- 视图初始化与继承 ---
+        async function initView(dateStr) {
+            document.getElementById('dateDisplay').textContent = dateStr;
+            const uid = currentUser.uid;
+            if (unsubT) unsubT(); if (unsubC) unsubC();
+
+            const tCol = collection(db, `users/${uid}/tasks`);
+            const cCol = collection(db, `users/${uid}/chats`);
+
+            const snapToday = await getDocs(query(tCol, where("date", "==", dateStr)));
+            if (snapToday.empty) {
+                document.getElementById('loading').style.display = 'flex';
+                const snapPast = await getDocs(query(tCol, where("date", "<", dateStr), orderBy("date", "desc"), limit(1)));
+                if (!snapPast.empty) {
+                    const snapTasks = await getDocs(query(tCol, where("date", "==", snapPast.docs[0].data().date)));
+                    const clones = snapTasks.docs.map(t => addDoc(tCol, { title: t.data().title, date: dateStr, isDone: false, order: t.data().order || Date.now() }));
+                    await Promise.all(clones);
+                }
+                document.getElementById('loading').style.display = 'none';
+            }
+
+            unsubT = onSnapshot(query(tCol, where("date", "==", dateStr)), (snap) => {
+                currentTasks = snap.docs.map(d => ({id: d.id, ...d.data()}));
+                currentTasks.sort((a,b) => a.isDone - b.isDone || a.order - b.order);
+                renderTasks(currentTasks);
+            });
+
+            unsubC = onSnapshot(query(cCol, orderBy("timestamp", "asc")), (snap) => {
+                allChatsCache = snap.docs.map(d => ({id: d.id, ...d.data()}));
+                const filtered = allChatsCache.filter(c => c.date === selectedDate);
+                renderChats(filtered);
+            });
+        }
+
+        function renderTasks(tasks) {
+            const el = document.getElementById('taskList');
+            el.innerHTML = tasks.map(t => `
+                <div class="task-item ${t.isDone ? 'done' : ''}">
+                    <div class="checkbox" onclick="toggleTask('${t.id}', ${t.isDone})"></div>
+                    <div class="task-title">${t.title}</div>
+                    <button style="color:red;border:none;background:none;font-size:0.6rem;cursor:pointer;" onclick="deleteTask('${t.id}')">删除</button>
+                </div>
+            `).join('');
+        }
+
+        function renderChats(chats) {
+            const el = document.getElementById('chatBox');
+            if (chats.length === 0) {
+                el.innerHTML = '<div style="text-align:center;padding-top:100px;color:#cbd5e1;font-size:0.8rem;">开始跟私教交流吧</div>';
+                return;
+            }
+            el.innerHTML = chats.map(c => {
+                const time = c.timestamp ? new Date(c.timestamp.seconds * 1000).toLocaleTimeString([], {hour:'2-digit', minute:'2-digit'}) : '...';
+                return `<div class="msg msg-${c.role}">${c.text}<span class="msg-time">${time}</span></div>`;
+            }).join('');
+            el.scrollTop = el.scrollHeight;
+        }
+
+        window.toggleTask = async (id, s) => updateDoc(doc(db, `users/${currentUser.uid}/tasks`, id), { isDone: !s });
+        window.deleteTask = async (id) => { if(confirm("彻底删除任务？")) await deleteDoc(doc(db, `users/${currentUser.uid}/tasks`, id)); };
+        
+        window.clearChats = async () => {
+            if (!confirm("确定清空今日对话？")) return;
+            const batch = writeBatch(db);
+            allChatsCache.filter(c => c.date === selectedDate).forEach(c => batch.delete(doc(db, `users/${currentUser.uid}/chats`, c.id)));
+            await batch.commit();
+        };
+
+        window.changeDate = (os) => {
+            const d = new Date(selectedDate); d.setDate(d.getDate() + os);
+            selectedDate = d.toISOString().split('T')[0]; initView(selectedDate);
+        };
+
+        // --- AI 私教核心逻辑 ---
+        window.processAI = async () => {
+            const input = document.getElementById('aiInput').value.trim();
+            const key = document.getElementById('apiKey').value.trim();
+            if (!input || !key) return alert("内容或 Key 缺失");
+
+            const btn = document.getElementById('aiBtn');
+            btn.disabled = true; btn.textContent = "思考中";
+            const uid = currentUser.uid;
+            const chatCol = collection(db, `users/${uid}/chats`);
+
+            try {
+                await addDoc(chatCol, { role: 'user', text: input, date: selectedDate, timestamp: serverTimestamp() });
+                const taskCtx = currentTasks.map(t => `${t.title}(${t.isDone ? '已完成' : '未做'})`).join(', ');
+
+                const res = await fetch("https://api.deepseek.com/chat/completions", {
+                    method: "POST",
+                    headers: { "Content-Type": "application/json", "Authorization": `Bearer ${key}` },
+                    body: JSON.stringify({
+                        model: "deepseek-chat",
+                        messages: [
+                            {
+                                role: "system", 
+                                content: `你是一个资深的健身私教。
+                                规则：
+                                1. 专业性：根据学员反馈（如轻松、酸痛）提供生理学解释和建议。
+                                2. 指导性：指导呼吸、营养和休息。
+                                3. 稳健性：除非用户明确要求（加练、删除计划），否则严禁主动改动任务清单。
+                                4. JSON：必须返回 {"coach_reply": "...", "changes": []}`
+                            },
+                            {role: "user", content: `今日计划状态：[${taskCtx}]。学员反馈：${input}`}
+                        ],
+                        response_format: { type: "json_object" }
+                    })
+                });
+
+                const data = await res.json();
+                const result = JSON.parse(data.choices[0].message.content);
+                await addDoc(chatCol, { role: 'coach', text: result.coach_reply, date: selectedDate, timestamp: serverTimestamp() });
+
+                const taskCol = collection(db, `users/${uid}/tasks`);
+                if (result.changes && result.changes.length > 0) {
+                    for (const c of result.changes) {
+                        if (c.action === 'ADD') await addDoc(taskCol, { title: c.title, date: selectedDate, isDone: false, order: Date.now() });
+                        else if (c.action === 'DELETE') {
+                            const snap = await getDocs(query(taskCol, where("date", "==", selectedDate), where("title", "==", c.title)));
+                            snap.docs.forEach(d => deleteDoc(d.ref));
+                        }
+                    }
+                }
+                document.getElementById('aiInput').value = "";
+            } catch (e) {
+                alert("执行失败: " + e.message);
+            } finally {
+                btn.disabled = false; btn.textContent = "发送";
+            }
+        };
+    </script>
+</body>
+</html>
