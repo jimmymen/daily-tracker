@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
-    <title>进化清单 Pro - 资深私教版</title>
+    <title>进化清单 Pro - 云端同步版</title>
     <style>
         :root {
             --primary: #2563eb; --bg: #f8fafc; --border: #cbd5e1;
@@ -14,12 +14,10 @@
         body { font-family: system-ui, -apple-system; background: var(--bg); margin: 0; padding: 10px; }
         .container { max-width: 600px; margin: 0 auto; display: flex; flex-direction: column; gap: 10px; }
 
-        /* 顶部导航 */
         .header { background: #1e3a8a; color: white; padding: 12px; border-radius: 12px; display: flex; justify-content: space-between; align-items: center; }
         .date-nav { display: flex; justify-content: space-between; align-items: center; background: #fff; padding: 8px; border-radius: 10px; border: 1px solid var(--border); }
         .date-str { font-weight: bold; color: var(--primary); font-size: 0.9rem; }
 
-        /* 聊天区域 */
         .chat-box { 
             background: #fff; border: 1px solid var(--border); border-radius: 12px; 
             height: 350px; overflow-y: auto; padding: 12px; display: flex; flex-direction: column; gap: 10px;
@@ -30,7 +28,6 @@
         .msg-coach { align-self: flex-start; background: var(--coach-msg); color: var(--coach-text); border: 1px solid #fed7aa; border-bottom-left-radius: 2px; }
         .msg-time { font-size: 0.65rem; opacity: 0.6; display: block; margin-top: 4px; }
 
-        /* 任务清单 */
         .task-list { display: flex; flex-direction: column; gap: 6px; }
         .task-item { display: flex; align-items: center; background: #fff; padding: 10px; border-radius: 10px; border: 1px solid var(--border); transition: 0.2s; }
         .task-item.done { opacity: 0.5; background: #f1f5f9; border-style: dashed; order: 100; }
@@ -39,19 +36,13 @@
         .task-title { flex: 1; font-weight: 500; font-size: 0.9rem; }
         .done .task-title { text-decoration: line-through; }
 
-        /* 输入区 */
         .input-area { background: #fff; border: 1px solid var(--border); border-radius: 12px; padding: 10px; box-shadow: 0 -2px 10px rgba(0,0,0,0.05); }
         .key-row { display: flex; gap: 5px; margin-bottom: 8px; }
         .key-row input { flex: 1; padding: 6px; font-size: 0.7rem; border: 1px solid var(--border); border-radius: 4px; }
-        textarea { width: 100%; height: 50px; border: 1px solid #e2e8f0; border-radius: 8px; padding: 8px; resize: none; font-size: 0.9rem; outline: none; transition: 0.3s; }
-        textarea:focus { border-color: var(--primary); }
+        textarea { width: 100%; height: 50px; border: 1px solid #e2e8f0; border-radius: 8px; padding: 8px; resize: none; font-size: 0.9rem; outline: none; }
         .ai-btn { background: var(--primary); color: white; border: none; padding: 8px 24px; border-radius: 8px; font-weight: bold; cursor: pointer; float: right; margin-top: 5px; }
 
-        /* 小按钮 */
         .small-btn { font-size: 0.65rem; padding: 3px 8px; border-radius: 4px; border: 1px solid #e2e8f0; background: white; cursor: pointer; color: #64748b; }
-        .small-btn:hover { background: #f1f5f9; }
-        .clear-btn { color: var(--danger); border-color: #fee2e2; }
-
         .loading { position: fixed; inset: 0; background: rgba(255,255,255,0.8); display: none; justify-content: center; align-items: center; z-index: 2000; }
     </style>
 </head>
@@ -59,13 +50,13 @@
 
     <div id="loginScreen" style="position:fixed;inset:0;background:#1e3a8a;display:flex;justify-content:center;align-items:center;z-index:3000;">
         <div style="background:white;padding:30px;border-radius:20px;text-align:center;width:80%;">
-            <h1 style="font-size:3rem;margin:0">💪</h1>
+            <h1 style="font-size:3rem;margin:0">🧬</h1>
             <h2>进化私教 Pro</h2>
             <button onclick="login()" style="width:100%;padding:12px;background:#2563eb;color:white;border:none;border-radius:10px;font-weight:bold;cursor:pointer;">Google 登录</button>
         </div>
     </div>
 
-    <div id="loading" class="loading">教练正在处理数据...</div>
+    <div id="loading" class="loading">正在同步云端数据...</div>
 
     <div id="app" class="container" style="display: none;">
         <div class="header">
@@ -81,7 +72,7 @@
 
         <div style="display:flex; justify-content:space-between; align-items:center; padding:0 5px;">
             <span style="font-size:0.75rem;color:#64748b;font-weight:bold;">💬 教练对话</span>
-            <button class="small-btn clear-btn" onclick="clearChats()">清空今日对话</button>
+            <button class="small-btn" style="color:red;border-color:#fee2e2;" onclick="clearChats()">清空今日对话</button>
         </div>
         <div id="chatBox" class="chat-box"></div>
 
@@ -91,17 +82,17 @@
         <div class="input-area">
             <div class="key-row">
                 <input type="password" id="apiKey" placeholder="在此粘贴 DeepSeek API Key">
-                <button class="small-btn" onclick="saveKey()">保存Key</button>
+                <button class="small-btn" id="saveKeyBtn" onclick="saveKeyToFirebase()">保存到云端</button>
             </div>
-            <textarea id="aiInput" placeholder="描述你的感觉，例如：'俯卧撑做完肌肉很酸' 或 '今天感觉很有劲'"></textarea>
-            <button class="ai-btn" id="aiBtn" onclick="processAI()">发送消息</button>
+            <textarea id="aiInput" placeholder="描述你的感觉，例如：'这组深蹲太轻松了'"></textarea>
+            <button class="ai-btn" id="aiBtn" onclick="processAI()">发送</button>
             <div style="clear:both;"></div>
         </div>
     </div>
 
     <script type="module">
         import { initializeApp } from 'https://www.gstatic.com/firebasejs/10.7.1/firebase-app.js';
-        import { getFirestore, collection, addDoc, query, where, getDocs, orderBy, limit, updateDoc, doc, deleteDoc, onSnapshot, serverTimestamp, writeBatch } from 'https://www.gstatic.com/firebasejs/10.7.1/firebase-firestore.js';
+        import { getFirestore, collection, addDoc, query, where, getDocs, orderBy, limit, updateDoc, doc, deleteDoc, onSnapshot, serverTimestamp, writeBatch, setDoc, getDoc } from 'https://www.gstatic.com/firebasejs/10.7.1/firebase-firestore.js';
         import { getAuth, signInWithPopup, GoogleAuthProvider, onAuthStateChanged, signOut } from 'https://www.gstatic.com/firebasejs/10.7.1/firebase-auth.js';
 
         const firebaseConfig = {
@@ -124,14 +115,17 @@
         let currentTasks = [];
         let allChatsCache = [];
 
-        onAuthStateChanged(auth, (user) => {
+        // --- 核心：身份验证与云端 Key 读取 ---
+        onAuthStateChanged(auth, async (user) => {
             if (user) {
                 currentUser = user;
                 document.getElementById('loginScreen').style.display = 'none';
                 document.getElementById('app').style.display = 'flex';
                 document.getElementById('userName').textContent = `学员: ${user.displayName}`;
-                const savedKey = localStorage.getItem('ds_key_v6');
-                if(savedKey) document.getElementById('apiKey').value = savedKey;
+                
+                // 1. 从云端读取 Key
+                await loadKeyFromFirebase();
+                
                 initView(selectedDate);
             } else {
                 document.getElementById('loginScreen').style.display = 'flex';
@@ -141,156 +135,6 @@
 
         window.login = () => signInWithPopup(auth, provider);
         window.logout = () => signOut(auth);
-        window.saveKey = () => {
-            localStorage.setItem('ds_key_v6', document.getElementById('apiKey').value.trim());
-            alert("API Key 已成功保存");
-        };
 
-        async function initView(dateStr) {
-            document.getElementById('dateDisplay').textContent = dateStr;
-            const uid = currentUser.uid;
-            if (unsubT) unsubT(); if (unsubC) unsubC();
-
-            const tCol = collection(db, `users/${uid}/tasks`);
-            const cCol = collection(db, `users/${uid}/chats`);
-
-            // 任务自动继承
-            const snapToday = await getDocs(query(tCol, where("date", "==", dateStr)));
-            if (snapToday.empty) {
-                document.getElementById('loading').style.display = 'flex';
-                const snapPast = await getDocs(query(tCol, where("date", "<", dateStr), orderBy("date", "desc"), limit(1)));
-                if (!snapPast.empty) {
-                    const snapTasks = await getDocs(query(tCol, where("date", "==", snapPast.docs[0].data().date)));
-                    const clones = snapTasks.docs.map(t => addDoc(tCol, { title: t.data().title, date: dateStr, isDone: false, order: t.data().order || Date.now() }));
-                    await Promise.all(clones);
-                }
-                document.getElementById('loading').style.display = 'none';
-            }
-
-            // 监听任务
-            unsubT = onSnapshot(query(tCol, where("date", "==", dateStr)), (snap) => {
-                currentTasks = snap.docs.map(d => ({id: d.id, ...d.data()}));
-                currentTasks.sort((a,b) => a.isDone - b.isDone || a.order - b.order);
-                renderTasks(currentTasks);
-            });
-
-            // 监听对话 (优化：前端日期过滤以避免建立索引)
-            unsubC = onSnapshot(query(cCol, orderBy("timestamp", "asc")), (snap) => {
-                allChatsCache = snap.docs.map(d => ({id: d.id, ...d.data()}));
-                const filtered = allChatsCache.filter(c => c.date === selectedDate);
-                renderChats(filtered);
-            });
-        }
-
-        function renderTasks(tasks) {
-            const el = document.getElementById('taskList');
-            el.innerHTML = tasks.map(t => `
-                <div class="task-item ${t.isDone ? 'done' : ''}">
-                    <div class="checkbox" onclick="toggleTask('${t.id}', ${t.isDone})"></div>
-                    <div class="task-title">${t.title}</div>
-                    <button style="color:red;border:none;background:none;font-size:0.6rem;cursor:pointer;" onclick="deleteTask('${t.id}')">删除</button>
-                </div>
-            `).join('');
-        }
-
-        function renderChats(chats) {
-            const el = document.getElementById('chatBox');
-            if (chats.length === 0) {
-                el.innerHTML = '<div style="text-align:center;padding-top:100px;color:#cbd5e1;font-size:0.8rem;">没有对话记录<br>跟教练聊聊你的身体感受吧</div>';
-                return;
-            }
-            el.innerHTML = chats.map(c => {
-                const time = c.timestamp ? new Date(c.timestamp.seconds * 1000).toLocaleTimeString([], {hour:'2-digit', minute:'2-digit'}) : '...';
-                return `<div class="msg msg-${c.role}">${c.text}<span class="msg-time">${time}</span></div>`;
-            }).join('');
-            el.scrollTop = el.scrollHeight;
-        }
-
-        window.toggleTask = async (id, s) => updateDoc(doc(db, `users/${currentUser.uid}/tasks`, id), { isDone: !s });
-        window.deleteTask = async (id) => { if(confirm("彻底删除该任务？")) await deleteDoc(doc(db, `users/${currentUser.uid}/tasks`, id)); };
-        
-        // --- 清空当前日期对话逻辑 ---
-        window.clearChats = async () => {
-            if (!confirm("确定清空今日的所有对话记录吗？(计划不会被删除)")) return;
-            const batch = writeBatch(db);
-            const todayChats = allChatsCache.filter(c => c.date === selectedDate);
-            todayChats.forEach(c => {
-                const ref = doc(db, `users/${currentUser.uid}/chats`, c.id);
-                batch.delete(ref);
-            });
-            await batch.commit();
-        };
-
-        window.changeDate = (os) => {
-            const d = new Date(selectedDate); d.setDate(d.getDate() + os);
-            selectedDate = d.toISOString().split('T')[0]; initView(selectedDate);
-        };
-
-        window.processAI = async () => {
-            const input = document.getElementById('aiInput').value.trim();
-            const key = document.getElementById('apiKey').value.trim();
-            if (!input || !key) return alert("内容或 Key 缺失");
-
-            const btn = document.getElementById('aiBtn');
-            btn.disabled = true; btn.textContent = "●●●";
-            const uid = currentUser.uid;
-            const chatCol = collection(db, `users/${uid}/chats`);
-
-            try {
-                // 保存用户消息
-                await addDoc(chatCol, { role: 'user', text: input, date: selectedDate, timestamp: serverTimestamp() });
-
-                const taskCtx = currentTasks.map(t => `${t.title}(${t.isDone ? '已完成' : '未做'})`).join(', ');
-
-                // 请求 AI
-                const res = await fetch("https://api.deepseek.com/chat/completions", {
-                    method: "POST",
-                    headers: { "Content-Type": "application/json", "Authorization": `Bearer ${key}` },
-                    body: JSON.stringify({
-                        model: "deepseek-chat",
-                        messages: [
-                            {
-                                role: "system", 
-                                content: `你是一个资深的健身私教，精通运动生理学和营养学。
-                                学员会向你汇报身体感受（如酸痛、疲劳、心率、状态良好等）。
-                                你的任务：
-                                1. 专业分析：针对学员的感受提供生理学解释。
-                                2. 提供建议：包括呼吸调节、营养补充、睡眠建议或针对具体动作的改进方案。
-                                3. 任务管理：除非用户明确下达任务指令，否则不要随意修改清单。
-                                4. 强制返回JSON：{"coach_reply": "详细的私教反馈文字", "changes": [{"action": "ADD"|"DELETE", "title": "任务名"}]}`
-                            },
-                            {role: "user", content: `今日计划状态：[${taskCtx}]。学员反馈：${input}`}
-                        ],
-                        response_format: { type: "json_object" }
-                    })
-                });
-
-                const data = await res.json();
-                const result = JSON.parse(data.choices[0].message.content);
-
-                // 保存教练消息
-                await addDoc(chatCol, { role: 'coach', text: result.coach_reply, date: selectedDate, timestamp: serverTimestamp() });
-
-                // 执行变更
-                const taskCol = collection(db, `users/${uid}/tasks`);
-                if (result.changes && result.changes.length > 0) {
-                    for (const c of result.changes) {
-                        if (c.action === 'ADD') {
-                            await addDoc(taskCol, { title: c.title, date: selectedDate, isDone: false, order: Date.now() });
-                        } else if (c.action === 'DELETE') {
-                            const snap = await getDocs(query(taskCol, where("date", "==", selectedDate), where("title", "==", c.title)));
-                            snap.docs.forEach(d => deleteDoc(d.ref));
-                        }
-                    }
-                }
-                document.getElementById('aiInput').value = "";
-            } catch (e) {
-                console.error(e);
-                alert("教练忙碌中: " + e.message);
-            } finally {
-                btn.disabled = false; btn.textContent = "发送消息";
-            }
-        };
-    </script>
-</body>
-</html>
+        // --- 核心逻辑：云端 Key 管理 ---
+        async function loadKeyFromFirebase() {
