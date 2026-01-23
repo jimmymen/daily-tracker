@@ -2,362 +2,124 @@
 <html lang="zh-CN">
 <head>
     <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
-    <title>我的专属日程手账 (终极兼容修复版)</title>
-    <script src="https://cdnjs.cloudflare.com/ajax/libs/Sortable/1.15.0/Sortable.min.js"></script>
+    <title>AI 实时日程 Pro</title>
+    <!-- 引入相同的样式风格，保持一致性 -->
     <style>
-        /* === 🎨 还原马卡龙经典皮肤 === */
-        :root {
-            --primary: #ff9a9e;       --primary-dark: #ff6b6b;
-            --accent: #84fab0;        --bg: #fffcf5;
-            --text: #5e5e5e;          --border: #ffe2e2;
-            --done-bg: #f0fdf4;       --shadow: 0 8px 20px rgba(255, 154, 158, 0.2);
-        }
-
-        * { margin: 0; padding: 0; box-sizing: border-box; -webkit-tap-highlight-color: transparent; }
-        body {
-            font-family: "PingFang SC", "Microsoft YaHei", sans-serif;
-            background: var(--bg); color: var(--text); padding: 20px; min-height: 100vh;
-            background-image: radial-gradient(#ffe2e2 1px, transparent 1px); background-size: 20px 20px;
-        }
-
-        .container { max-width: 600px; margin: 0 auto; display: flex; flex-direction: column; gap: 20px; padding-bottom: 120px; }
-
-        /* 顶部卡片 */
-        .header-card {
-            background: linear-gradient(135deg, #a18cd1 0%, #fbc2eb 100%);
-            border-radius: 20px; padding: 25px 20px; text-align: center; color: white; box-shadow: var(--shadow); position: relative;
-        }
-        .header-top-row { display: flex; justify-content: space-between; align-items: flex-start; }
-        .btn-calendar { background: rgba(255,255,255,0.25); border: 1px solid rgba(255,255,255,0.4); color: white; padding: 8px 12px; border-radius: 12px; font-size: 1.2rem; cursor: pointer; backdrop-filter: blur(5px); }
-        .date-badge { background: rgba(255,255,255,0.25); padding: 4px 12px; border-radius: 20px; font-size: 0.85rem; display: inline-block; font-weight: bold; margin-top: 5px; }
-
-        /* 强制继承提醒 */
-        #inheritAlert {
-            display: none; background: #fff4e6; color: #ff922b; padding: 12px; border-radius: 15px;
-            text-align: center; font-size: 0.9rem; font-weight: bold; border: 2px dashed #ffbc7d; cursor: pointer; animation: pulse 2s infinite;
-        }
-        @keyframes pulse { 0% { opacity: 0.8; } 50% { opacity: 1; } 100% { opacity: 0.8; } }
-
-        /* 任务项 */
-        .task-list { display: flex; flex-direction: column; gap: 12px; }
-        .task-item {
-            background: white; border-radius: 16px; padding: 15px; display: flex; align-items: center; gap: 12px;
-            box-shadow: 0 4px 6px rgba(0,0,0,0.02); border: 2px solid transparent; transition: 0.3s;
-        }
-        .task-item.done { border-color: var(--accent); background: var(--done-bg); opacity: 0.8; }
-        .check-box { width: 28px; height: 28px; border: 3px solid #ddd; border-radius: 50%; flex-shrink: 0; display: flex; justify-content: center; align-items: center; cursor: pointer; }
-        .task-item.done .check-box { background: var(--accent); border-color: var(--accent); }
-        .check-box::after { content: '✔'; color: white; font-weight: bold; display: none; }
-        .task-item.done .check-box::after { display: block; }
-        .task-text { flex: 1; font-size: 1.1rem; font-weight: 600; cursor: pointer; }
-        .task-item.done .task-text { text-decoration: line-through; color: #aaa; }
-
-        /* 日记相册 */
-        .diary-section { background: white; border-radius: 16px; padding: 20px; border: 2px solid #fff4e6; box-shadow: 0 4px 10px rgba(0,0,0,0.03); }
-        .diary-input {
-            width: 100%; height: 80px; border: none; outline: none; background: #fffcf5; padding: 10px; border-radius: 10px;
-            font-size: 1rem; color: #666; resize: none; line-height: 1.5; background-image: linear-gradient(transparent 95%, #ffe2e2 95%); background-size: 100% 1.5rem;
-        }
-        .photo-gallery { display: flex; flex-wrap: wrap; gap: 10px; margin-top: 15px; }
-        .img-item { width: 70px; height: 70px; border-radius: 10px; border: 2px solid white; box-shadow: 0 2px 5px rgba(0,0,0,0.1); overflow: hidden; position: relative; }
-        .img-item img { width: 100%; height: 100%; object-fit: cover; }
-        .btn-add-img { width: 70px; height: 70px; border-radius: 10px; border: 2px dashed #ddd; display: flex; align-items: center; justify-content: center; color: #aaa; font-size: 1.5rem; cursor: pointer; }
-
-        /* 底部添加栏 */
-        .add-area {
-            background: white; padding: 10px; border-radius: 50px; display: flex; gap: 10px;
-            position: fixed; bottom: 20px; left: 50%; transform: translateX(-50%); width: 90%; max-width: 580px;
-            box-shadow: 0 5px 20px rgba(0,0,0,0.1); border: 2px solid var(--border);
-        }
-        .add-input { flex: 1; border: none; outline: none; padding-left: 20px; font-size: 1rem; background: transparent; }
-        .btn-add { background: var(--primary); color: white; border: none; padding: 10px 25px; border-radius: 50px; font-weight: bold; cursor: pointer; }
-
-        /* 日历弹窗 */
-        .modal { position: fixed; top: 0; left: 0; width: 100%; height: 100%; background: rgba(0,0,0,0.5); backdrop-filter: blur(5px); display: none; align-items: center; justify-content: center; z-index: 100; }
-        .modal-card { background: white; width: 90%; max-width: 380px; border-radius: 20px; padding: 20px; }
-        .cal-grid { display: grid; grid-template-columns: repeat(7, 1fr); gap: 5px; text-align: center; margin-top: 15px; }
-        .cal-cell { padding: 10px 0; border-radius: 10px; cursor: pointer; position: relative; font-size: 0.9rem; }
-        .cal-cell.today { background: #ffe2e2; color: var(--primary-dark); font-weight: bold; }
-        .cal-cell.selected { background: var(--primary); color: white; }
-        .dot { width: 5px; height: 5px; border-radius: 50%; background: var(--primary); position: absolute; bottom: 3px; left: 50%; transform: translateX(-50%); }
-
-        /* 管理面板 (底部隐藏) */
-        .debug-panel { margin-top: 20px; padding: 10px; background: #eee; border-radius: 10px; font-size: 0.7rem; color: #999; }
+        :root { --primary: #2563eb; --bg: #f8fafc; }
+        body { font-family: system-ui; background: var(--bg); padding: 20px; }
+        .card { background: white; border-radius: 12px; padding: 20px; box-shadow: 0 4px 6px rgba(0,0,0,0.1); margin-bottom: 20px; }
+        .schedule-item { display: flex; justify-content: space-between; padding: 10px; border-bottom: 1px solid #eee; }
+        .tag { padding: 2px 8px; border-radius: 4px; font-size: 0.8rem; background: #dbeafe; }
     </style>
 </head>
 <body>
 
-    <div class="container">
-        <div class="header-card">
-            <div class="header-top-row">
-                <div style="text-align:left">
-                    <h1 id="appTitle">✨ 闪闪发光的一天</h1>
-                    <div class="date-badge" id="dateDisplay">加载日期中...</div>
-                </div>
-                <button class="btn-calendar" onclick="toggleModal(true)">📅</button>
-            </div>
-            <div id="btnBackToday" style="display:none; margin-top:10px; cursor:pointer; text-decoration:underline; font-size:0.8rem;" onclick="goToToday()">回到今天</div>
+    <div id="loginSection">
+        <button onclick="login()">Google 登录同步日程</button>
+    </div>
+
+    <div id="app" style="display:none;">
+        <div class="card">
+            <h2>✨ AI 快速添加</h2>
+            <textarea id="aiInput" placeholder="例如：明天下午3点和张总在咖啡厅开会..."></textarea>
+            <button onclick="processAI()">识别并同步</button>
         </div>
 
-        <!-- 救命按钮：继承历史 -->
-        <div id="inheritAlert" onclick="forceInherit()">
-            💡 发现你之前的任务记录，点击这里同步到今天
-        </div>
-
-        <div class="task-list" id="taskList"></div>
-
-        <div class="diary-section">
-            <textarea id="diaryInput" class="diary-input" placeholder="今天发生了什么好事？" oninput="autoSave()"></textarea>
-            <div class="photo-gallery" id="photoGallery">
-                <label class="btn-add-img" id="btnAddImg">
-                    + <input type="file" hidden accept="image/*" onchange="uploadImg(this)">
-                </label>
-            </div>
-        </div>
-
-        <!-- 调试面板 (用来确认数据在不在) -->
-        <div class="debug-panel">
-            数据状态：<span id="dataStatus">检查中...</span> | 
-            <span onclick="exportData()" style="text-decoration:underline;cursor:pointer">备份数据</span>
+        <div class="card">
+            <h2>📅 我的日程 (实时同步)</h2>
+            <div id="scheduleList">正在连接实时数据库...</div>
         </div>
     </div>
 
-    <div class="add-area" id="addArea">
-        <input type="text" id="newTaskInput" class="add-input" placeholder="添加新任务...">
-        <button class="btn-add" onclick="addTask()">添加</button>
-    </div>
+    <!-- Firebase SDK 模块化引入 -->
+    <script type="module">
+        import { initializeApp } from "https://www.gstatic.com/firebasejs/10.7.1/firebase-app.js";
+        import { getFirestore, collection, addDoc, query, orderBy, onSnapshot, doc, deleteDoc } from "https://www.gstatic.com/firebasejs/10.7.1/firebase-firestore.js";
+        import { getAuth, signInWithPopup, GoogleAuthProvider, onAuthStateChanged } from "https://www.gstatic.com/firebasejs/10.7.1/firebase-auth.js";
 
-    <!-- 日历弹窗 -->
-    <div class="modal" id="calModal" onclick="toggleModal(false)">
-        <div class="modal-card" onclick="event.stopPropagation()">
-            <div style="display:flex; justify-content:space-between; align-items:center; font-weight:bold;">
-                <button onclick="moveMonth(-1)" style="border:none;background:none;cursor:pointer">❮</button>
-                <div id="calMonthTitle"></div>
-                <button onclick="moveMonth(1)" style="border:none;background:none;cursor:pointer">❯</button>
-            </div>
-            <div class="cal-grid" id="calGrid"></div>
-        </div>
-    </div>
+        // 1. 配置信息 (替换为你自己的)
+        const firebaseConfig = {
+            apiKey: "你的API_KEY",
+            authDomain: "你的项目.firebaseapp.com",
+            projectId: "你的项目ID",
+            storageBucket: "你的项目.appspot.com",
+            messagingSenderId: "...",
+            appId: "..."
+        };
 
-    <script>
-        // 1. 终极数据兼容列表 (包含你之前所有可能用过的名字)
-        const OLD_KEYS = ['sparkle_diary_data_v1', 'sparkle_diary_final', 'sparkle_diary_v2', 'sparkle_data', 'sparkle_diary_data_v3'];
-        const MAIN_KEY = 'sparkle_diary_master'; // 以后统一用这个
-        
-        let db = {};
-        let today = new Date().toLocaleDateString('en-CA'); // 获取 YYYY-MM-DD
-        let viewDate = today;
-        let calCursor = new Date();
+        const app = initializeApp(firebaseConfig);
+        const db = getFirestore(app);
+        const auth = getAuth(app);
+        const provider = new GoogleAuthProvider();
 
-        // 2. 初始化：数据搜救
-        function init() {
-            // 从主库读取
-            let master = localStorage.getItem(MAIN_KEY);
-            if (master) db = JSON.parse(master);
+        let currentUser = null;
 
-            // 搜救旧库数据并合并
-            OLD_KEYS.forEach(key => {
-                let old = localStorage.getItem(key);
-                if (old) {
-                    let parsedOld = JSON.parse(old);
-                    db = { ...parsedOld, ...db }; // 旧数据补全到主库
-                }
+        // 2. 核心：身份状态监听
+        onAuthStateChanged(auth, (user) => {
+            if (user) {
+                currentUser = user;
+                document.getElementById('loginSection').style.display = 'none';
+                document.getElementById('app').style.display = 'block';
+                // 开启实时数据同步
+                startLiveSync(user.uid);
+            }
+        });
+
+        // 3. 核心：实时同步逻辑 (借鉴你代码中的 snapShot)
+        function startLiveSync(uid) {
+            const q = query(
+                collection(db, `users/${uid}/schedules`), 
+                orderBy("startTime", "asc")
+            );
+
+            // 这个函数会一直挂载，数据库一变，UI 立即变
+            onSnapshot(q, (snapshot) => {
+                const listEl = document.getElementById('scheduleList');
+                let html = '';
+                
+                snapshot.forEach((doc) => {
+                    const item = doc.data();
+                    html += `
+                        <div class="schedule-item">
+                            <div>
+                                <strong>${item.title}</strong>
+                                <span class="tag">${item.startTime}</span>
+                            </div>
+                            <button onclick="deleteTask('${doc.id}')">🗑️</button>
+                        </div>
+                    `;
+                });
+                
+                listEl.innerHTML = html || '暂无日程，请添加';
             });
-
-            // 状态显示
-            const historyCount = Object.keys(db).length;
-            document.getElementById('dataStatus').textContent = `已找到 ${historyCount} 天的历史记录`;
-
-            // 初始化今天
-            if (!db[today]) {
-                db[today] = { tasks: [], note: "", photos: [] };
-                // 检查是否可以继承
-                showInheritIfAvailable();
-            }
-
-            render();
-            initSortable();
         }
 
-        // 3. 核心功能：强制继承
-        function showInheritIfAvailable() {
-            const dates = Object.keys(db).filter(d => d < today).sort();
-            if (dates.length > 0 && db[today].tasks.length === 0) {
-                document.getElementById('inheritAlert').style.display = 'block';
-            }
-        }
-
-        function forceInherit() {
-            const dates = Object.keys(db).filter(d => d < today).sort();
-            if (dates.length > 0) {
-                const lastDate = dates[dates.length - 1];
-                db[today].tasks = db[lastDate].tasks.map(t => ({
-                    id: Date.now() + Math.random(),
-                    text: t.text,
-                    done: false
-                }));
-                save();
-                render();
-                document.getElementById('inheritAlert').style.display = 'none';
-            }
-        }
-
-        // 4. 页面渲染
-        function render() {
-            const data = db[viewDate] || { tasks: [], note: "", photos: [] };
-            const isToday = (viewDate === today);
-
-            // 顶部信息
-            document.getElementById('dateDisplay').textContent = (viewDate === today ? "今天 " : "") + viewDate;
-            document.getElementById('btnBackToday').style.display = isToday ? 'none' : 'block';
-            document.getElementById('addArea').style.display = isToday ? 'flex' : 'none';
-
-            // 任务渲染
-            const list = document.getElementById('taskList');
-            list.innerHTML = '';
-            data.tasks.forEach(t => {
-                const div = document.createElement('div');
-                div.className = `task-item ${t.done ? 'done' : ''}`;
-                div.innerHTML = `
-                    <div class="check-box" onclick="toggleTask(${t.id})"></div>
-                    <div class="task-text" onclick="toggleTask(${t.id})">${t.text}</div>
-                    ${isToday ? `<span onclick="delTask(${t.id})" style="color:#ff9a9e;cursor:pointer">✕</span>` : ''}
-                `;
-                list.appendChild(div);
-            });
-
-            // 日记渲染
-            document.getElementById('diaryInput').value = data.note || "";
+        // 4. AI 识别处理 (借鉴你代码中的 DeepSeek 思路)
+        window.processAI = async () => {
+            const text = document.getElementById('aiInput').value;
+            // 提示词工程：强制 AI 返回日程相关的 JSON
+            const prompt = "将以下文字转化为日程JSON对象，包含字段：title, startTime(YYYY-MM-DD HH:mm), location, category";
             
-            // 相册渲染
-            const gallery = document.getElementById('photoGallery');
-            const addBtn = document.getElementById('btnAddImg');
-            gallery.innerHTML = '';
-            (data.photos || []).forEach((img, idx) => {
-                const d = document.createElement('div');
-                d.className = 'img-item';
-                d.innerHTML = `<img src="${img}">${isToday ? `<div onclick="delImg(${idx})" style="position:absolute;top:0;right:0;background:red;color:white;font-size:10px;padding:2px;cursor:pointer">✕</div>` : ''}`;
-                gallery.appendChild(d);
-            });
-            if(isToday) gallery.appendChild(addBtn);
-        }
-
-        // 5. 交互逻辑
-        function addTask() {
-            const input = document.getElementById('newTaskInput');
-            if (!input.value.trim()) return;
-            db[today].tasks.push({ id: Date.now(), text: input.value, done: false });
-            input.value = '';
-            save(); render();
-        }
-
-        function toggleTask(id) {
-            const t = db[viewDate].tasks.find(x => x.id === id);
-            if (t) t.done = !t.done;
-            save(); render();
-        }
-
-        function delTask(id) {
-            db[today].tasks = db[today].tasks.filter(x => x.id !== id);
-            save(); render();
-        }
-
-        function uploadImg(input) {
-            const file = input.files[0];
-            if(!file) return;
-            const reader = new FileReader();
-            reader.onload = (e) => {
-                const img = new Image();
-                img.onload = () => {
-                    const cvs = document.createElement('canvas');
-                    let w = img.width, h = img.height;
-                    if(w > 500) { h *= 500/w; w = 500; }
-                    cvs.width = w; cvs.height = h;
-                    cvs.getContext('2d').drawImage(img, 0, 0, w, h);
-                    if(!db[today].photos) db[today].photos = [];
-                    db[today].photos.push(cvs.toDataURL('image/jpeg', 0.6));
-                    save(); render();
-                };
-                img.src = e.target.result;
+            /* 这里调用 AI API (fetch DeepSeek...) */
+            // 假设 AI 返回了结果：
+            const aiResult = {
+                title: "和张总开会",
+                startTime: "2023-11-20 15:00",
+                location: "咖啡厅",
+                category: "工作"
             };
-            reader.readAsDataURL(file);
-        }
 
-        function delImg(idx) {
-            db[today].photos.splice(idx, 1);
-            save(); render();
-        }
+            // 直接存入 Firebase，所有端会自动同步显示
+            await addDoc(collection(db, `users/${currentUser.uid}/schedules`), aiResult);
+            document.getElementById('aiInput').value = '';
+        };
 
-        function autoSave() {
-            db[viewDate].note = document.getElementById('diaryInput').value;
-            save();
-        }
+        // 删除逻辑
+        window.deleteTask = async (id) => {
+            await deleteDoc(doc(db, `users/${currentUser.uid}/schedules`, id));
+        };
 
-        function save() {
-            localStorage.setItem(MAIN_KEY, JSON.stringify(db));
-        }
-
-        // 6. 日历逻辑
-        function toggleModal(show) {
-            document.getElementById('calModal').style.display = show ? 'flex' : 'none';
-            if(show) renderCalendar();
-        }
-
-        function renderCalendar() {
-            const grid = document.getElementById('calGrid');
-            const title = document.getElementById('calMonthTitle');
-            grid.innerHTML = '<div>日</div><div>一</div><div>二</div><div>三</div><div>四</div><div>五</div><div>六</div>';
-            
-            const year = calCursor.getFullYear();
-            const month = calCursor.getMonth();
-            title.textContent = `${year}年 ${month + 1}月`;
-
-            const firstDay = new Date(year, month, 1).getDay();
-            const days = new Date(year, month + 1, 0).getDate();
-
-            for(let i=0; i<firstDay; i++) grid.appendChild(document.createElement('div'));
-
-            for(let d=1; d<=days; d++) {
-                const dateKey = `${year}-${String(month+1).padStart(2,'0')}-${String(d).padStart(2,'0')}`;
-                const cell = document.createElement('div');
-                cell.className = `cal-cell ${dateKey === today ? 'today' : ''} ${dateKey === viewDate ? 'selected' : ''}`;
-                if(db[dateKey] && (db[dateKey].tasks.length > 0 || db[dateKey].note)) {
-                    const dot = document.createElement('div'); dot.className = 'dot'; cell.appendChild(dot);
-                }
-                cell.innerHTML += d;
-                cell.onclick = () => { viewDate = dateKey; toggleModal(false); render(); };
-                grid.appendChild(cell);
-            }
-        }
-
-        function moveMonth(delta) {
-            calCursor.setMonth(calCursor.getMonth() + delta);
-            renderCalendar();
-        }
-
-        function goToToday() { viewDate = today; render(); }
-
-        function exportData() {
-            prompt("请复制以下代码并保存到记事本中，这是你的所有数据：", JSON.stringify(db));
-        }
-
-        function initSortable() {
-            new Sortable(document.getElementById('taskList'), {
-                animation: 150, onEnd: () => {
-                    const list = [];
-                    document.querySelectorAll('.task-text').forEach(el => {
-                        const t = db[viewDate].tasks.find(x => x.text === el.textContent);
-                        if(t) list.push(t);
-                    });
-                    db[viewDate].tasks = list;
-                    save();
-                }
-            });
-        }
-
-        // 启动！
-        init();
+        window.login = () => signInWithPopup(auth, provider);
 
     </script>
 </body>
