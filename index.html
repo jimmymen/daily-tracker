@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
-    <title>进化清单 Pro - 习惯继承系统</title>
+    <title>进化清单 Pro - 自动拆分版</title>
     <style>
         :root {
             --primary: #2563eb; --primary-dark: #1e40af; 
@@ -17,24 +17,21 @@
         }
         .container { max-width: 600px; margin: 0 auto; display: flex; flex-direction: column; gap: 15px; }
 
-        /* 顶部导航与状态 */
         .top-bar { background: linear-gradient(135deg, var(--primary), var(--primary-dark)); color: white; padding: 20px; border-radius: 16px; box-shadow: 0 4px 12px rgba(37,99,235,0.2); }
         .date-nav { display: flex; justify-content: space-between; align-items: center; background: #fff; padding: 12px 20px; border-radius: 12px; border: 1px solid var(--border); margin-top: -10px; }
         .date-str { font-weight: 800; color: var(--primary); font-size: 1.1rem; }
 
-        /* AI 识别区 */
         .card { background: var(--card); border-radius: 16px; border: 1px solid var(--border); padding: 15px; box-shadow: 0 2px 4px rgba(0,0,0,0.05); }
-        textarea { width: 100%; height: 70px; border: 1px solid #e2e8f0; border-radius: 10px; padding: 12px; resize: none; font-size: 1rem; margin-top: 10px; }
+        textarea { width: 100%; height: 80px; border: 1px solid #e2e8f0; border-radius: 10px; padding: 12px; resize: none; font-size: 1rem; margin-top: 10px; outline: none; transition: 0.3s; }
+        textarea:focus { border-color: var(--primary); box-shadow: 0 0 0 3px rgba(37,99,235,0.1); }
         .ai-controls { display: flex; justify-content: space-between; align-items: center; margin-top: 10px; }
 
-        /* 任务列表样式 */
         .task-list { display: flex; flex-direction: column; gap: 10px; }
         .task-item { 
             display: flex; align-items: center; background: #fff; padding: 16px; 
             border-radius: 14px; border: 1px solid var(--border); 
             transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
         }
-        /* 完成任务下移样式 */
         .task-item.done { opacity: 0.5; transform: scale(0.97); background: #f1f5f9; border-style: dashed; order: 100; }
         .task-item.done .task-title { text-decoration: line-through; color: #94a3b8; }
         
@@ -47,17 +44,13 @@
 
         .task-title { flex: 1; font-weight: 600; font-size: 1.05rem; }
         .del-btn { color: var(--danger); font-size: 0.8rem; background: #fff1f2; padding: 5px 10px; border-radius: 6px; border: none; cursor: pointer; }
+        .badge { font-size: 0.65rem; background: #dcfce7; color: #166534; padding: 2px 6px; border-radius: 4px; margin-left: 8px; }
 
-        .badge { font-size: 0.65rem; background: #dcfce7; color: #166534; padding: 2px 6px; border-radius: 4px; margin-left: 8px; font-weight: normal; }
-
-        /* 登录与加载 */
         .login-screen { position: fixed; inset: 0; background: #1e3a8a; display: flex; justify-content: center; align-items: center; z-index: 1000; }
         .login-card { background: white; padding: 40px; border-radius: 24px; text-align: center; width: 85%; max-width: 350px; }
         .loading { position: fixed; inset: 0; background: rgba(255,255,255,0.8); display: none; justify-content: center; align-items: center; z-index: 999; }
         .spinner { width: 30px; height: 30px; border: 3px solid #f3f3f3; border-top: 3px solid var(--primary); border-radius: 50%; animation: spin 1s linear infinite; }
         @keyframes spin { to { transform: rotate(360deg); } }
-        
-        button:disabled { opacity: 0.5; cursor: not-allowed; }
     </style>
 </head>
 <body>
@@ -66,8 +59,8 @@
         <div class="login-card">
             <h1 style="font-size: 3.5rem; margin-bottom: 10px;">🧬</h1>
             <h2 style="color: #1e3a8a; margin-bottom: 5px;">进化清单</h2>
-            <p style="color: #64748b; margin-bottom: 30px;">任务自动继承 · 完工自动沉底</p>
-            <button onclick="login()" style="width:100%; padding:16px; background:var(--primary); color:white; border:none; border-radius:12px; font-weight:bold; font-size:1rem;">Google 登录</button>
+            <p style="color: #64748b; margin-bottom: 30px;">智能拆分 · 任务继承</p>
+            <button onclick="login()" style="width:100%; padding:16px; background:var(--primary); color:white; border:none; border-radius:12px; font-weight:bold; font-size:1rem; cursor:pointer;">Google 登录</button>
         </div>
     </div>
 
@@ -78,9 +71,9 @@
             <div style="display: flex; justify-content: space-between; align-items: flex-start;">
                 <div>
                     <p id="userHello" style="font-size: 0.8rem; opacity: 0.9;">你好,</p>
-                    <h2 style="font-size: 1.4rem;">今日挑战计划</h2>
+                    <h2 style="font-size: 1.4rem;">进化任务计划</h2>
                 </div>
-                <button onclick="logout()" style="background:rgba(255,255,255,0.2); border:none; color:white; padding:6px 12px; border-radius:8px; font-size:0.8rem;">退出</button>
+                <button onclick="logout()" style="background:rgba(255,255,255,0.2); border:none; color:white; padding:6px 12px; border-radius:8px; font-size:0.8rem; cursor:pointer;">退出</button>
             </div>
         </div>
 
@@ -92,16 +85,14 @@
 
         <div class="card">
             <input type="password" id="apiKey" placeholder="DeepSeek API Key" style="width:100%; padding:10px; border:1px solid #e2e8f0; border-radius:8px; font-size:0.8rem;">
-            <textarea id="aiInput" placeholder="输入指令，如：增加任务 跪式俯卧撑 2组... 或：以后不练 仰卧起坐 了"></textarea>
+            <textarea id="aiInput" placeholder="试试说：增加5组俯卧撑和3组仰卧起坐..."></textarea>
             <div class="ai-controls">
-                <span id="aiStatus" style="font-size:0.75rem; color:#64748b;">支持自然语言识别</span>
-                <button id="aiBtn" onclick="processAI()" style="background:var(--primary); color:white; border:none; padding:10px 24px; border-radius:10px; font-weight:bold;">AI 执行</button>
+                <span id="aiStatus" style="font-size:0.75rem; color:#64748b;">支持自动拆分多组任务</span>
+                <button id="aiBtn" onclick="processAI()" style="background:var(--primary); color:white; border:none; padding:10px 24px; border-radius:10px; font-weight:bold; cursor:pointer;">AI 执行</button>
             </div>
         </div>
 
-        <div id="taskList" class="task-list">
-            <!-- 任务条目将在此渲染 -->
-        </div>
+        <div id="taskList" class="task-list"></div>
     </div>
 
     <script type="module">
@@ -109,7 +100,6 @@
         import { getFirestore, collection, addDoc, query, where, getDocs, orderBy, limit, updateDoc, doc, deleteDoc, onSnapshot } from 'https://www.gstatic.com/firebasejs/10.7.1/firebase-firestore.js';
         import { getAuth, signInWithPopup, GoogleAuthProvider, onAuthStateChanged, signOut } from 'https://www.gstatic.com/firebasejs/10.7.1/firebase-auth.js';
 
-        // --- 1. Firebase 配置 ---
         const firebaseConfig = {
             apiKey: "AIzaSyCFk4f7bKUHlb3d1Cg1jyS1EM-SPC4pr40",
             authDomain: "myflightlog-1f4cb.firebaseapp.com",
@@ -128,7 +118,6 @@
         let selectedDate = new Date().toISOString().split('T')[0];
         let unsubscribe = null;
 
-        // --- 2. 身份验证逻辑 ---
         window.login = () => signInWithPopup(auth, provider).catch(err => alert("登录失败: " + err.message));
         window.logout = () => signOut(auth);
 
@@ -138,7 +127,7 @@
                 document.getElementById('loginScreen').style.display = 'none';
                 document.getElementById('app').style.display = 'flex';
                 document.getElementById('userHello').textContent = `你好, ${user.displayName}`;
-                if(localStorage.getItem('ds_key_evolution')) document.getElementById('apiKey').value = localStorage.getItem('ds_key_evolution');
+                if(localStorage.getItem('ds_key_evolution_v2')) document.getElementById('apiKey').value = localStorage.getItem('ds_key_evolution_v2');
                 initDateView(selectedDate);
             } else {
                 document.getElementById('loginScreen').style.display = 'flex';
@@ -146,25 +135,20 @@
             }
         });
 
-        // --- 3. 核心继承加载系统 ---
         async function initDateView(dateStr) {
             document.getElementById('dateDisplay').textContent = dateStr;
             const taskCol = collection(db, `users/${currentUser.uid}/tasks`);
             if (unsubscribe) unsubscribe();
 
-            // 检查今日是否有数据
             const snapToday = await getDocs(query(taskCol, where("date", "==", dateStr)));
 
             if (snapToday.empty) {
                 document.getElementById('loading').style.display = 'flex';
-                // 溯源：寻找最近的有记录的一天
                 const snapPast = await getDocs(query(taskCol, where("date", "<", dateStr), orderBy("date", "desc"), limit(1)));
 
                 if (!snapPast.empty) {
                     const lastDate = snapPast.docs[0].data().date;
                     const snapLastTasks = await getDocs(query(taskCol, where("date", "==", lastDate)));
-                    
-                    // 克隆任务到今日快照 (状态设为未完成)
                     const clones = snapLastTasks.docs.map(tDoc => {
                         const data = tDoc.data();
                         return addDoc(taskCol, {
@@ -180,7 +164,6 @@
                 document.getElementById('loading').style.display = 'none';
             }
 
-            // 监听数据并按 状态(isDone) + 序号(order) 排序
             unsubscribe = onSnapshot(query(taskCol, where("date", "==", dateStr)), (snapshot) => {
                 const tasks = snapshot.docs.map(d => ({id: d.id, ...d.data()}));
                 tasks.sort((a, b) => a.isDone - b.isDone || a.order - b.order);
@@ -191,7 +174,7 @@
         function renderTasks(tasks) {
             const listEl = document.getElementById('taskList');
             listEl.innerHTML = tasks.map(t => `
-                <div class="task-item ${t.isDone ? 'done' : ''}" style="order: ${t.isDone ? 100 : 0}">
+                <div class="task-item ${t.isDone ? 'done' : ''}">
                     <div class="checkbox" onclick="toggleTask('${t.id}', ${t.isDone})"></div>
                     <div class="task-title">
                         ${t.title}
@@ -202,14 +185,13 @@
             `).join('');
         }
 
-        // --- 4. 任务交互 ---
         window.toggleTask = async (id, currentStatus) => {
             const taskRef = doc(db, `users/${currentUser.uid}/tasks`, id);
             await updateDoc(taskRef, { isDone: !currentStatus });
         };
 
         window.deleteTask = async (id) => {
-            if(confirm("确定永久删除？删除后未来日期将不再继承此项。")) {
+            if(confirm("确定永久删除？")) {
                 await deleteDoc(doc(db, `users/${currentUser.uid}/tasks`, id));
             }
         };
@@ -221,13 +203,13 @@
             initDateView(selectedDate);
         };
 
-        // --- 5. 增强版 AI 识别 (含报错保护) ---
+        // --- 5. 核心逻辑：自动拆分 AI ---
         window.processAI = async () => {
             const text = document.getElementById('aiInput').value.trim();
             const apiKey = document.getElementById('apiKey').value.trim();
-            if (!text || !apiKey) return alert("请填写内容和有效的 API Key");
+            if (!text || !apiKey) return alert("请填写内容和 API Key");
             
-            localStorage.setItem('ds_key_evolution', apiKey);
+            localStorage.setItem('ds_key_evolution_v2', apiKey);
             const btn = document.getElementById('aiBtn');
             const statusLabel = document.getElementById('aiStatus');
             btn.disabled = true;
@@ -240,7 +222,14 @@
                     body: JSON.stringify({
                         model: "deepseek-chat",
                         messages: [
-                            {role: "system", content: "你是一个任务解析器。识别用户是想 'ADD' 还是 'DELETE'。必须返回纯 JSON 格式：{\"action\": \"ADD\"|\"DELETE\", \"title\": \"任务名称\"}"},
+                            {
+                                role: "system", 
+                                content: `你是一个智能任务拆分助手。
+                                规则：
+                                1. 如果用户提到多组、多次、多项（如：5组俯卧撑），你必须将其拆分为多个独立的条目（如：俯卧撑 第1组, 俯卧撑 第2组...）。
+                                2. 如果用户提到多个不同的任务（如：跑步和跳绳），同时拆分。
+                                3. 返回 JSON 格式：{"tasks": [{"action": "ADD"|"DELETE", "title": "任务名称"}]}`
+                            },
                             {role: "user", content: text}
                         ],
                         response_format: { type: "json_object" }
@@ -248,40 +237,35 @@
                 });
 
                 const data = await response.json();
-                
-                // 报错保护逻辑
-                if (!response.ok || data.error) {
-                    throw new Error(data.error ? data.error.message : "API 返回错误");
-                }
-                if (!data.choices || data.choices.length === 0) {
-                    throw new Error("API 未能返回识别结果，请检查余额或网络");
-                }
+                if (!response.ok || data.error) throw new Error(data.error?.message || "接口错误");
 
-                const intent = JSON.parse(data.choices[0].message.content);
+                const result = JSON.parse(data.choices[0].message.content);
+                const taskCol = collection(db, `users/${currentUser.uid}/tasks`);
 
-                if (intent.action === 'ADD') {
-                    await addDoc(collection(db, `users/${currentUser.uid}/tasks`), {
-                        title: intent.title,
-                        date: selectedDate,
-                        isDone: false,
-                        order: Date.now(),
-                        isInherited: false
-                    });
-                    statusLabel.textContent = "✅ 已执行: 增加 " + intent.title;
-                } else if (intent.action === 'DELETE') {
-                    const q = query(collection(db, `users/${currentUser.uid}/tasks`), where("date", "==", selectedDate), where("title", "==", intent.title));
-                    const snap = await getDocs(q);
-                    if (snap.empty) {
-                        statusLabel.textContent = "❓ 未找到可删除的: " + intent.title;
-                    } else {
-                        snap.docs.forEach(d => deleteDoc(d.ref));
-                        statusLabel.textContent = "🗑️ 已执行: 删除 " + intent.title;
+                for (const item of result.tasks) {
+                    if (item.action === 'ADD') {
+                        await addDoc(taskCol, {
+                            title: item.title,
+                            date: selectedDate,
+                            isDone: false,
+                            order: Date.now(),
+                            isInherited: false
+                        });
+                    } else if (item.action === 'DELETE') {
+                        // 模糊匹配删除：只要包含标题就删（方便批量删除组）
+                        const snap = await getDocs(query(taskCol, where("date", "==", selectedDate)));
+                        snap.docs.forEach(d => {
+                            if (d.data().title.includes(item.title)) {
+                                deleteDoc(d.ref);
+                            }
+                        });
                     }
                 }
+                
+                statusLabel.textContent = `✅ 已处理 ${result.tasks.length} 项指令`;
                 document.getElementById('aiInput').value = "";
             } catch (e) {
-                console.error("AI Error:", e);
-                alert("AI 执行出错: " + e.message + "\n请检查控制台了解详情。");
+                alert("执行失败: " + e.message);
                 statusLabel.textContent = "❌ 执行失败";
             } finally {
                 btn.disabled = false;
