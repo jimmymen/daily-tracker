@@ -268,7 +268,7 @@
             try {
                 // 1. 构建 AI 记忆：提取最近的 6 条对话历史
                 // 必须将角色映射为 AI 协议要求的 'user' 和 'assistant'
-                const history = chatsCache.slice(-6).map(c => ({
+                const history = chatsCache.slice(-10).map(c => ({
                     role: c.role === 'coach' ? 'assistant' : 'user',
                     content: c.text
                 }));
@@ -320,3 +320,4 @@
     </script>
 </body>
 </html>
+
