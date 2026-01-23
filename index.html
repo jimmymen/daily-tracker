@@ -175,7 +175,15 @@
         const provider = new GoogleAuthProvider();
 
         let currentUser = null;
-        let selectedDate = new Date().toISOString().split('T')[0];
+        
+        // --- 修复：使用本地时间代替 UTC 时间 ---
+        const today = new Date();
+        const y = today.getFullYear();
+        const m = String(today.getMonth() + 1).padStart(2, '0');
+        const d = String(today.getDate()).padStart(2, '0');
+        let selectedDate = `${y}-${m}-${d}`;
+        // -------------------------------------
+
         let unsubT = null, unsubC = null;
         let currentTasks = [];
         let chatsCache = [];
@@ -255,45 +263,42 @@
             if (unsubT) unsubT(); 
             if (unsubC) unsubC();
             
-            // 2. 关键：切换日期时立即清空聊天缓存，防止视觉和逻辑上继承上一天的内容
+            // 2. 关键：切换日期时立即清空聊天缓存
             chatsCache = []; 
             document.getElementById('chatBox').innerHTML = '<div style="text-align:center;padding-top:80px;color:#cbd5e1;font-size:0.8rem;">加载中...</div>';
 
             const tCol = collection(db, `users/${uid}/tasks`);
             const cCol = collection(db, `users/${uid}/chats`);
 
-            // 任务逻辑（保持不变：如果今天没任务，尝试从昨天继承）
+            // 任务逻辑
             const snapToday = await getDocs(query(tCol, where("date", "==", dateStr)));
             if (snapToday.empty) {
                 await doInheritTasks(dateStr, false);
             }
 
-            // 监听任务（保持不变）
+            // 监听任务
             unsubT = onSnapshot(query(tCol, where("date", "==", dateStr)), (snap) => {
                 currentTasks = snap.docs.map(d => ({id: d.id, ...d.data()}));
                 currentTasks.sort((a,b) => a.isDone - b.isDone || a.order - b.order);
                 renderTasks();
             });
 
-            // 监听聊天（修改：只查询 date == dateStr）
-            // 我们去掉 orderBy，改为前端排序，这样可以避免复杂的索引报错
+            // 监听聊天（只查询 date == dateStr）
             unsubC = onSnapshot(query(cCol, where("date", "==", dateStr)), (snap) => {
                 chatsCache = snap.docs.map(d => ({id: d.id, ...d.data()}));
-                
                 // 前端按时间戳排序
                 chatsCache.sort((a, b) => {
                     const tA = a.timestamp ? a.timestamp.seconds : 9999999999;
                     const tB = b.timestamp ? b.timestamp.seconds : 9999999999;
                     return tA - tB;
                 });
-                
                 renderChats(chatsCache);
             });
 
             displayQuoteByDay();
         }
 
-        // 统一的继承逻辑函数（保持不变）
+        // 统一的继承逻辑函数
         async function doInheritTasks(targetDate, isForce) {
             const tCol = collection(db, `users/${currentUser.uid}/tasks`);
             const snapPast = await getDocs(query(tCol, where("date", "<", targetDate), orderBy("date", "desc"), limit(1)));
@@ -369,7 +374,6 @@
         window.clearChats = async () => {
             if (confirm("清空对话记录？")) {
                 const batch = writeBatch(db);
-                // 这里的 chatsCache 现在只包含当天的聊天，所以只会删除当天的
                 chatsCache.forEach(c => batch.delete(doc(db, `users/${currentUser.uid}/chats`, c.id)));
                 await batch.commit();
             }
@@ -393,7 +397,6 @@
                     return;
                 }
 
-                // AI 上下文现在只取 chatsCache，而 chatsCache 只包含当天的内容
                 const history = chatsCache.slice(-5).map(c => ({ role: c.role === 'coach' ? 'assistant' : 'user', content: c.text }));
                 await addDoc(chatCol, { role: 'user', text: input, date: selectedDate, timestamp: serverTimestamp() });
 
