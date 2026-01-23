@@ -3,152 +3,133 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
-    <title>进化清单 Pro - 宽屏分栏版</title>
+    <title>进化清单 Pro - 快乐健身版</title>
     <style>
         :root {
-            --primary: #2563eb; --bg: #f8fafc; --border: #cbd5e1;
-            --user-msg: #2563eb; --coach-msg: #fff7ed; --coach-text: #9a3412;
-            --danger: #ef4444;
+            --primary: #3b82f6; --bg: #fdfdfd; --border: #e2e8f0;
+            --user-msg: #3b82f6; --coach-bg: #fff1f2; --coach-text: #9f1239;
+            --danger: #f43f5e;
         }
         * { box-sizing: border-box; -webkit-tap-highlight-color: transparent; }
-        body { font-family: system-ui, -apple-system; background: var(--bg); margin: 0; padding: 10px; color: #334155; }
+        body { font-family: "PingFang SC", "Microsoft YaHei", sans-serif; background: var(--bg); margin: 0; padding: 10px; color: #1e293b; }
         
-        /* 响应式大容器 */
-        .container { max-width: 1200px; margin: 0 auto; display: flex; flex-direction: column; gap: 15px; }
+        .container { max-width: 1100px; margin: 0 auto; display: flex; flex-direction: column; gap: 12px; }
 
         /* 顶部导航 */
-        .header { background: #1e3a8a; color: white; padding: 12px 20px; border-radius: 12px; display: flex; justify-content: space-between; align-items: center; }
-        
-        /* 日期导航区 */
-        .date-nav-wrapper { display: flex; align-items: center; gap: 10px; background: #fff; padding: 8px 15px; border-radius: 10px; border: 1px solid var(--border); }
-        .date-str { font-weight: bold; color: var(--primary); font-size: 0.95rem; }
-        .calendar-picker { border: none; background: none; font-size: 1.2rem; cursor: pointer; padding: 0 5px; }
+        .header { background: linear-gradient(135deg, #2563eb, #3b82f6); color: white; padding: 15px 25px; border-radius: 18px; display: flex; justify-content: space-between; align-items: center; box-shadow: 0 4px 15px rgba(59,130,246,0.2); }
+        .date-nav-wrapper { display: flex; align-items: center; gap: 10px; background: #fff; padding: 10px 18px; border-radius: 14px; border: 1px solid var(--border); }
+        .date-str { font-weight: 800; color: var(--primary); font-size: 1rem; }
 
-        /* --- 核心分栏逻辑 --- */
+        /* 主内容布局 */
         .main-content { display: flex; flex-direction: column; gap: 15px; }
-        
-        @media (min-width: 900px) {
+        @media (min-width: 850px) {
             .main-content { display: grid; grid-template-columns: 1fr 1fr; gap: 20px; align-items: flex-start; }
-            .chat-section { position: sticky; top: 10px; }
-            .chat-box { height: calc(100vh - 280px) !important; } /* 动态高度适配屏幕 */
+            .chat-box { height: calc(100vh - 300px) !important; }
         }
 
-        /* 任务清单列 */
-        .list-header { display: flex; justify-content: space-between; align-items: center; margin-bottom: 8px; }
-        .task-list { display: flex; flex-direction: column; gap: 8px; }
-        .task-item { display: flex; align-items: center; background: #fff; padding: 12px; border-radius: 12px; border: 1px solid var(--border); }
-        .task-item.done { opacity: 0.5; background: #f1f5f9; border-style: dashed; order: 100; }
-        .checkbox { width: 20px; height: 20px; border-radius: 50%; border: 2px solid var(--border); margin-right: 12px; cursor: pointer; flex-shrink: 0; }
+        /* 清单区域 */
+        .task-section { background: white; border: 1px solid var(--border); border-radius: 20px; padding: 15px; }
+        .list-header { display: flex; justify-content: space-between; align-items: center; margin-bottom: 15px; padding: 0 5px; }
+        .task-list { display: flex; flex-direction: column; gap: 10px; }
+        .task-item { display: flex; align-items: center; background: #fff; padding: 14px; border-radius: 14px; border: 1px solid var(--border); transition: 0.3s cubic-bezier(0.4, 0, 0.2, 1); }
+        .task-item.done { opacity: 0.4; transform: scale(0.97); background: #f8fafc; border-style: dashed; order: 100; }
+        .checkbox { width: 22px; height: 22px; border-radius: 50%; border: 2px solid var(--border); margin-right: 12px; cursor: pointer; flex-shrink: 0; transition: 0.2s; }
         .task-item.done .checkbox { background: #10b981; border-color: #10b981; }
-        .task-title { flex: 1; font-weight: 500; font-size: 0.95rem; }
+        .task-title { flex: 1; font-weight: 600; font-size: 0.95rem; }
 
-        /* 对话记录列 */
+        /* 对话区域 */
         .chat-section { display: flex; flex-direction: column; gap: 10px; }
         .chat-box { 
-            background: #fff; border: 1px solid var(--border); border-radius: 16px; 
+            background: #fff; border: 1px solid var(--border); border-radius: 20px; 
             height: 350px; overflow-y: auto; padding: 15px; display: flex; flex-direction: column; gap: 12px;
             scroll-behavior: smooth;
         }
-        .msg { max-width: 85%; padding: 10px 14px; border-radius: 12px; font-size: 0.9rem; line-height: 1.5; }
-        .msg-user { align-self: flex-end; background: var(--user-msg); color: white; border-bottom-right-radius: 2px; }
-        .msg-coach { align-self: flex-start; background: var(--coach-msg); color: var(--coach-text); border: 1px solid #fed7aa; border-bottom-left-radius: 2px; }
+        .msg { max-width: 85%; padding: 12px 16px; border-radius: 16px; font-size: 0.95rem; line-height: 1.5; box-shadow: 0 2px 4px rgba(0,0,0,0.02); }
+        .msg-user { align-self: flex-end; background: var(--user-msg); color: white; border-bottom-right-radius: 4px; }
+        .msg-coach { align-self: flex-start; background: var(--coach-bg); color: var(--coach-text); border-bottom-left-radius: 4px; border: 1px solid #ffe4e6; }
 
         /* 输入区 */
-        .input-area { background: #fff; border: 1px solid var(--border); border-radius: 16px; padding: 15px; box-shadow: 0 4px 15px rgba(0,0,0,0.05); }
-        .key-row { display: flex; gap: 8px; margin-bottom: 10px; align-items: center; }
-        .key-row input { flex: 1; padding: 6px 10px; border-radius: 6px; border: 1px solid var(--border); font-size: 0.75rem; }
-        textarea { width: 100%; height: 60px; border: 1px solid #e2e8f0; border-radius: 10px; padding: 10px; resize: none; font-size: 0.95rem; outline: none; }
-        .ai-btn { background: var(--primary); color: white; border: none; padding: 10px 25px; border-radius: 8px; font-weight: bold; cursor: pointer; float: right; margin-top: 8px; }
+        .input-area { background: #fff; border: 1px solid var(--border); border-radius: 20px; padding: 15px; box-shadow: 0 4px 20px rgba(0,0,0,0.05); }
+        textarea { width: 100%; height: 50px; border: 1px solid #f1f5f9; border-radius: 12px; padding: 10px; resize: none; font-size: 1rem; outline: none; background: #f8fafc; }
+        .ai-btn { background: var(--primary); color: white; border: none; padding: 10px 25px; border-radius: 12px; font-weight: bold; cursor: pointer; float: right; margin-top: 10px; }
 
         /* 弹窗与加载 */
-        .modal-overlay { position: fixed; inset: 0; background: rgba(0,0,0,0.5); display: none; justify-content: center; align-items: center; z-index: 5000; }
-        .modal-content { background: white; width: 90%; max-width: 400px; padding: 25px; border-radius: 20px; }
-        .add-task-btn { background: var(--primary); color: white; border: none; width: 32px; height: 32px; border-radius: 8px; cursor: pointer; font-size: 1.2rem; font-weight: bold; }
-        .small-btn { font-size: 0.7rem; padding: 4px 10px; border-radius: 6px; border: 1px solid #e2e8f0; background: white; cursor: pointer; color: #64748b; }
-        .loading { position: fixed; inset: 0; background: rgba(255,255,255,0.8); display: none; justify-content: center; align-items: center; z-index: 6000; }
-        .spinner { width: 30px; height: 30px; border: 3px solid #eee; border-top-color: var(--primary); border-radius: 50%; animation: spin 1s linear infinite; }
-        @keyframes spin { to { transform: rotate(360deg); } }
-
-        /* 隐藏原生日期选取的样式但保留功能 */
-        .hidden-date-input { position: absolute; width: 0; height: 0; opacity: 0; pointer-events: none; }
+        .modal-overlay { position: fixed; inset: 0; background: rgba(0,0,0,0.3); backdrop-filter: blur(4px); display: none; justify-content: center; align-items: center; z-index: 5000; }
+        .modal-content { background: white; width: 90%; max-width: 380px; padding: 25px; border-radius: 24px; }
+        .add-task-btn { background: var(--primary); color: white; border: none; width: 32px; height: 32px; border-radius: 10px; cursor: pointer; font-size: 1.3rem; }
+        .small-btn { font-size: 0.75rem; padding: 5px 12px; border-radius: 10px; border: 1px solid var(--border); background: white; cursor: pointer; color: #64748b; }
     </style>
 </head>
 <body>
 
-    <div id="loginScreen" style="position:fixed;inset:0;background:#1e3a8a;display:flex;justify-content:center;align-items:center;z-index:9000;">
-        <div style="background:white;padding:40px;border-radius:24px;text-align:center;width:85%;max-width:350px;">
-            <h1 style="font-size:3.5rem;margin:0">🧠</h1>
-            <h2 style="color:#1e3a8a">进化私教清单</h2>
-            <button onclick="login()" style="width:100%;padding:15px;background:#2563eb;color:white;border:none;border-radius:12px;font-weight:bold;cursor:pointer;">Google 登录</button>
+    <div id="loginScreen" style="position:fixed;inset:0;background:#3b82f6;display:flex;justify-content:center;align-items:center;z-index:9000;">
+        <div style="background:white;padding:40px;border-radius:30px;text-align:center;width:85%;max-width:320px;box-shadow: 0 20px 40px rgba(0,0,0,0.2);">
+            <h1 style="font-size:3.5rem;margin:0">🏃‍♂️</h1>
+            <h2 style="color:#1e40af;margin-top:10px;">进化私教清单</h2>
+            <p style="color:#64748b;margin-bottom:25px;">陪你快乐进化的运动搭子</p>
+            <button onclick="login()" style="width:100%;padding:15px;background:#3b82f6;color:white;border:none;border-radius:15px;font-weight:bold;font-size:1.1rem;cursor:pointer;">Google 一键登录</button>
         </div>
     </div>
 
     <!-- 录入弹窗 -->
     <div id="addTaskModal" class="modal-overlay" onclick="if(event.target===this) closeAddTaskModal()">
         <div class="modal-content">
-            <h3 style="margin-top:0">🆕 新增训练项目</h3>
-            <input type="text" id="manualTaskInput" style="width:100%;padding:12px;border:1px solid var(--border);border-radius:8px;font-size:1rem;" placeholder="例如：跑步 5公里" onkeyup="if(event.key==='Enter') saveTaskManual()">
+            <h3 style="margin-top:0">✨ 想要练点什么？</h3>
+            <input type="text" id="manualTaskInput" style="width:100%;padding:12px;border:1px solid var(--border);border-radius:14px;font-size:1rem;background:#f8fafc;" placeholder="例如：跳绳 500个" onkeyup="if(event.key==='Enter') saveTaskManual()">
             <div style="display:flex;justify-content:flex-end;gap:10px;margin-top:20px;">
-                <button class="small-btn" onclick="closeAddTaskModal()">取消</button>
-                <button class="ai-btn" style="margin:0" onclick="saveTaskManual()">确认添加</button>
+                <button class="small-btn" onclick="closeAddTaskModal()">先算了</button>
+                <button class="ai-btn" style="margin:0" onclick="saveTaskManual()">确定添加</button>
             </div>
         </div>
     </div>
 
-    <div id="loading" class="loading"><div class="spinner"></div></div>
+    <div id="loading" style="position:fixed;inset:0;background:rgba(255,255,255,0.8);display:none;justify-content:center;align-items:center;z-index:6000;">🏃‍♂️ 教练正在全力赶来...</div>
 
     <div id="app" class="container" style="display: none;">
         <!-- 头部 -->
         <div class="header">
-            <span id="userName" style="font-size: 0.9rem; font-weight: bold;">Evolution Coach</span>
+            <span id="userName" style="font-size: 1rem; font-weight: bold;">👋 你好！</span>
             <div style="display: flex; align-items: center; gap: 15px;">
-                <!-- 小日历图标 -->
-                <div style="position: relative;">
-                    <button class="calendar-picker" onclick="document.getElementById('hiddenDatePicker').showPicker()">📅</button>
-                    <input type="date" id="hiddenDatePicker" class="hidden-date-input" onchange="jumpToDate(this.value)">
-                </div>
+                <button style="border:none;background:none;font-size:1.4rem;cursor:pointer;" onclick="document.getElementById('hiddenDatePicker').showPicker()">📅</button>
+                <input type="date" id="hiddenDatePicker" style="position:absolute;width:0;height:0;opacity:0;" onchange="jumpToDate(this.value)">
                 <button class="small-btn" onclick="logout()" style="color:white; border-color:white; background:transparent;">退出</button>
             </div>
         </div>
 
-        <!-- 日期导航 -->
+        <!-- 日期 -->
         <div class="date-nav-wrapper">
             <button onclick="changeDate(-1)" style="border:none;background:none;cursor:pointer;font-size:1.2rem;">◀</button>
             <div id="dateDisplay" class="date-str"></div>
             <button onclick="changeDate(1)" style="border:none;background:none;cursor:pointer;font-size:1.2rem;">▶</button>
         </div>
 
-        <!-- 主内容区：左右分栏布局 -->
         <div class="main-content">
-            
-            <!-- 左侧：任务计划 -->
+            <!-- 清单 -->
             <div class="task-section">
                 <div class="list-header">
-                    <span style="font-size:0.8rem;color:#64748b;font-weight:bold;">📋 训练计划</span>
+                    <span style="font-size:0.85rem;color:#64748b;font-weight:bold;">📋 任务清单</span>
                     <button class="add-task-btn" onclick="openAddTaskModal()">+</button>
                 </div>
                 <div id="taskList" class="task-list"></div>
             </div>
 
-            <!-- 右侧：对话记录 -->
+            <!-- 对话 -->
             <div class="chat-section">
-                <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:8px;">
-                    <span style="font-size:0.8rem;color:#64748b;font-weight:bold;">💬 教练对话</span>
-                    <button class="small-btn" style="color:var(--danger); border-color:#fee2e2;" onclick="clearChats()">清空今日记录</button>
+                <div style="display:flex; justify-content:space-between; align-items:center;">
+                    <span style="font-size:0.85rem;color:#64748b;font-weight:bold;">💬 健身搭子</span>
+                    <button class="small-btn" style="color:var(--danger); border-color:#fee2e2;" onclick="clearChats()">清空闲聊</button>
                 </div>
                 <div id="chatBox" class="chat-box"></div>
 
-                <!-- 输入区域紧跟对话框 -->
                 <div class="input-area">
-                    <div class="key-row">
-                        <input type="password" id="apiKey" placeholder="DeepSeek API Key">
-                        <button class="small-btn" onclick="saveKeyToFirebase()">云端保存</button>
+                    <div style="display:flex; gap:8px; margin-bottom:10px;">
+                        <input type="password" id="apiKey" placeholder="在此粘贴你的 Key" style="flex:1; padding:6px 12px; border:1px solid var(--border); border-radius:8px; font-size:0.75rem;">
+                        <button class="small-btn" onclick="saveKeyToFirebase()">存云端</button>
                     </div>
-                    <textarea id="aiInput" placeholder="告诉教练你的感受..."></textarea>
-                    <button class="ai-btn" id="aiBtn" onclick="processAI()">发送消息</button>
+                    <textarea id="aiInput" placeholder="练完了？感觉怎么样？来聊聊吧！"></textarea>
+                    <button class="ai-btn" id="aiBtn" onclick="processAI()">发送</button>
                 </div>
             </div>
-
         </div>
     </div>
 
@@ -182,7 +163,7 @@
                 currentUser = user;
                 document.getElementById('loginScreen').style.display = 'none';
                 document.getElementById('app').style.display = 'flex';
-                document.getElementById('userName').textContent = `学员: ${user.displayName}`;
+                document.getElementById('userName').textContent = `你好, ${user.displayName.split(' ')[0]}！`;
                 await loadKey();
                 initView(selectedDate);
             } else {
@@ -202,7 +183,7 @@
         window.saveKeyToFirebase = async () => {
             const key = document.getElementById('apiKey').value.trim();
             await setDoc(doc(db, `users/${currentUser.uid}/settings`, "deepseek"), { apiKey: key, updatedAt: serverTimestamp() });
-            alert("Key 已同步");
+            alert("✨ 云端同步成功！");
         };
 
         async function initView(dateStr) {
@@ -240,14 +221,14 @@
                 <div class="task-item ${t.isDone ? 'done' : ''}">
                     <div class="checkbox" onclick="toggleTask('${t.id}', ${t.isDone})"></div>
                     <div class="task-title">${t.title}</div>
-                    <button style="color:red;border:none;background:none;font-size:0.6rem;cursor:pointer;" onclick="deleteTask('${t.id}')">删除</button>
+                    <button style="color:#fda4af;border:none;background:none;font-size:0.6rem;cursor:pointer;" onclick="deleteTask('${t.id}')">🗑️</button>
                 </div>
             `).join('');
         }
 
         function renderChats(chats) {
             const el = document.getElementById('chatBox');
-            if (chats.length === 0) { el.innerHTML = '<div style="text-align:center;padding-top:100px;color:#cbd5e1;font-size:0.8rem;">今天没有对话记录</div>'; return; }
+            if (chats.length === 0) { el.innerHTML = '<div style="text-align:center;padding-top:100px;color:#cbd5e1;font-size:0.8rem;">哎呀，没人理我...<br>快来聊聊今天的训练！</div>'; return; }
             el.innerHTML = chats.map(c => `<div class="msg msg-${c.role}">${c.text}</div>`).join('');
             el.scrollTop = el.scrollHeight;
         }
@@ -269,10 +250,10 @@
         };
 
         window.toggleTask = async (id, s) => updateDoc(doc(db, `users/${currentUser.uid}/tasks`, id), { isDone: !s });
-        window.deleteTask = async (id) => { if(confirm("删除该条目？")) await deleteDoc(doc(db, `users/${currentUser.uid}/tasks`, id)); };
+        window.deleteTask = async (id) => { if(confirm("不要这个任务了吗？")) await deleteDoc(doc(db, `users/${currentUser.uid}/tasks`, id)); };
         
         window.clearChats = async () => {
-            if (confirm("清空今日对话？")) {
+            if (confirm("真的要抹除我们的回忆吗？")) {
                 const batch = writeBatch(db);
                 chatsCache.filter(c => c.date === selectedDate).forEach(c => batch.delete(doc(db, `users/${currentUser.uid}/chats`, c.id)));
                 await batch.commit();
@@ -294,8 +275,15 @@
                     body: JSON.stringify({
                         model: "deepseek-chat",
                         messages: [
-                            { role: "system", content: "你是一个资深健身私教。分析学员身体感受（如酸痛、轻松等）并提供生理学解释建议。严禁随意修改清单。JSON：{\"coach_reply\": \"...\", \"changes\": []}" },
-                            { role: "user", content: `今日计划状态：[${currentTasks.map(t=>t.title).join(',')}]。反馈：${input}` }
+                            { 
+                                role: "system", 
+                                content: `你现在是一个超级幽默、阳光、偶尔爱开玩笑的“健身搭子”！
+                                1. 语气：像好朋友一样聊天，多用表情包（💪, 🔥, ✨, 👏），拒绝枯燥的科学讲座。
+                                2. 反应：如果学员说练得好，你就疯狂吹彩虹屁！如果学员说累，你就讲个冷笑话或者给个暖心的抱抱。
+                                3. 建议：除非用户要求调整计划，否则只管聊天和鼓励！
+                                4. 格式：JSON返回 {"coach_reply": "你的幽默回复", "changes": []}` 
+                            },
+                            { role: "user", content: `今日任务进度：[${currentTasks.map(t=>t.title + (t.isDone?'已搞定':'还没练')).join(',')}]。用户说：${input}` }
                         ],
                         response_format: { type: "json_object" }
                     })
@@ -310,7 +298,7 @@
                     }
                 }
                 document.getElementById('aiInput').value = "";
-            } catch (e) { alert("AI 错误: " + e.message); } finally { btn.disabled = false; }
+            } catch (e) { console.error(e); } finally { btn.disabled = false; }
         };
     </script>
 </body>
