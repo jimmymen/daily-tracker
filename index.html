@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
-    <title>进化清单 Pro - 布局终极版</title>
+    <title>进化清单 Pro - 最终稳定版</title>
     <style>
         :root {
             --primary: #3b82f6; --bg: #fdfdfd; --border: #e2e8f0;
@@ -13,7 +13,6 @@
         * { box-sizing: border-box; -webkit-tap-highlight-color: transparent; }
         body { font-family: "PingFang SC", "Microsoft YaHei", serif; background: var(--bg); margin: 0; padding: 8px; color: #1e293b; }
         
-        /* 核心布局容器 */
         .container { max-width: 1100px; margin: 0 auto; display: flex; flex-direction: column; gap: 10px; }
         .main-layout { display: flex; flex-direction: column; gap: 10px; }
 
@@ -46,12 +45,10 @@
         /* 桌面端布局 */
         @media (min-width: 850px) { 
             .main-content { display: grid; grid-template-columns: 1fr 1fr; gap: 20px; } 
-            .chat-section { order: initial; grid-column: 2 / 3; grid-row: 1 / span 3; } /* 占据右侧全部 */
+            .chat-section { order: initial; grid-column: 2 / 3; grid-row: 1 / span 3; }
             .task-section-todo { order: initial; grid-column: 1 / 2; grid-row: 1 / 2; }
             .task-section-done { order: initial; grid-column: 1 / 2; grid-row: 2 / 3; }
             .chat-box { height: calc(100vh - 380px) !important; }
-
-            /* 调整最外层布局，让名言和统计依然堆叠在顶部 */
             .main-layout { display: block; }
         }
 
@@ -125,7 +122,7 @@
         <!-- 外层布局控制，以便调整顺序 -->
         <div class="main-layout">
             
-            <!-- 名言警句 -->
+            <!-- 名言警句 (移动端 order 1) -->
             <div class="quote-card-wrapper">
                 <div class="quote-card" onclick="refreshQuote()">
                     <div id="quoteText">“加载中...”</div>
@@ -133,7 +130,7 @@
                 </div>
             </div>
 
-            <!-- 卡路里统计 -->
+            <!-- 卡路里统计 (移动端 order 2) -->
             <div class="stat-card-wrapper">
                 <div class="stat-card">
                     <div id="totalCalories" class="stat-val">0</div>
@@ -141,17 +138,17 @@
                 </div>
             </div>
 
-            <!-- 日期导航 -->
+            <!-- 日期导航 (移动端 order 3) -->
             <div class="date-nav-wrapper">
                 <button onclick="changeDate(-1)" style="border:none;background:none;font-size:1.2rem;">◀</button>
                 <div id="dateDisplay" class="date-str"></div>
                 <button onclick="changeDate(1)" style="border:none;background:none;font-size:1.2rem;">▶</button>
             </div>
 
-            <!-- 主内容区域 (任务和聊天) -->
+            <!-- 主内容区域 (任务和聊天) (移动端 order 4) -->
             <div class="main-content">
                 
-                <!-- 聊天区域 -->
+                <!-- 聊天区域 (移动端 order 1) -->
                 <div class="chat-section">
                     <div id="chatBox" class="chat-box"></div>
                     <div class="input-area">
@@ -164,7 +161,7 @@
                     </div>
                 </div>
 
-                <!-- 未完成项目 -->
+                <!-- 未完成项目 (移动端 order 2) -->
                 <div class="task-section-todo task-box">
                     <div style="display:flex; justify-content:space-between; margin-bottom:12px;">
                         <span style="font-weight:800; font-size:0.85rem; color:#64748b;">📋 待办清单</span>
@@ -176,7 +173,7 @@
                     <div id="todoList" class="task-list"></div>
                 </div>
 
-                <!-- 已完成项目 -->
+                <!-- 已完成项目 (移动端 order 3) -->
                 <div class="task-section-done task-box">
                     <span style="font-weight:800; font-size:0.85rem; color:#64748b; display:block; margin-bottom:12px;">✅ 今日已完成</span>
                     <div id="doneList" class="task-list"></div>
@@ -349,14 +346,17 @@
             }
         };
 
-        // --- AI 逻辑（无响应修复） ---
+        // --- 核心 AI 逻辑（无响应修复） ---
         async function processAI() {
             const input = document.getElementById('aiInput').value.trim();
             const key = document.getElementById('apiKey').value.trim();
+            const aiBtn = document.getElementById('aiBtn');
+
             if (!input || !key || isProcessing) return;
             
             isProcessing = true; 
-            document.getElementById('aiBtn').disabled = true;
+            aiBtn.disabled = true;
+            aiBtn.textContent = "发送中..."; 
 
             try {
                 await addDoc(collection(db, `users/${currentUser.uid}/chats`), { role: 'user', text: input, date: selectedDate, timestamp: serverTimestamp() });
@@ -388,7 +388,8 @@
                 alert("DeepSeek 频率限制或 Key 错误，请稍后再试。");
             } finally {
                 isProcessing = false;
-                document.getElementById('aiBtn').disabled = false;
+                aiBtn.disabled = false;
+                aiBtn.textContent = "发送";
             }
         }
         
