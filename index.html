@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
-    <title>进化清单 Pro - 手动精准版</title>
+    <title>进化清单 Pro - 深度记忆版</title>
     <style>
         :root {
             --primary: #3b82f6; --bg: #fdfdfd; --border: #e2e8f0;
@@ -16,10 +16,12 @@
 
         .header { background: linear-gradient(135deg, #2563eb, #3b82f6); color: white; padding: 12px 20px; border-radius: 15px; display: flex; justify-content: space-between; align-items: center; }
         
+        /* 卡路里统计 */
         .stat-card { background: white; border: 1px solid var(--border); padding: 15px; border-radius: 16px; text-align: center; box-shadow: 0 2px 8px rgba(0,0,0,0.05); }
         .stat-val { font-size: 2.2rem; font-weight: 900; color: #f59e0b; }
         .stat-label { font-size: 0.8rem; color: #64748b; font-weight: bold; margin-top: 4px; }
 
+        /* 每日摘抄 */
         .quote-card { background: var(--quote-bg); border: 1px dashed #bae6fd; border-radius: 15px; padding: 15px; text-align: center; cursor: pointer; min-height: 80px; display: flex; flex-direction: column; justify-content: center; }
         #quoteText { font-size: 0.9rem; color: var(--quote-text); font-style: italic; font-weight: 500; }
         #quoteBook { font-size: 0.7rem; color: #64748b; margin-top: 5px; }
@@ -30,6 +32,7 @@
         .main-content { display: flex; flex-direction: column; gap: 10px; }
         @media (min-width: 850px) { .main-content { display: grid; grid-template-columns: 1fr 1fr; gap: 20px; } .chat-box { height: calc(100vh - 480px) !important; } }
 
+        /* 任务清单样式 */
         .task-section { background: white; border: 1px solid var(--border); border-radius: 15px; padding: 12px; }
         .task-list { display: flex; flex-direction: column; gap: 8px; }
         .task-item { display: flex; align-items: center; background: #fff; padding: 14px; border-radius: 12px; border: 1px solid var(--border); }
@@ -39,6 +42,7 @@
         .task-title { flex: 1; font-weight: 600; font-size: 0.95rem; }
         .task-cal-tag { font-size: 0.7rem; background: #fff7ed; color: #f59e0b; padding: 2px 6px; border-radius: 6px; border: 1px solid #ffedd5; font-weight: bold; margin-right: 10px; }
 
+        /* 聊天区域 */
         .chat-box { background: #fff; border: 1px solid var(--border); border-radius: 15px; height: 320px; overflow-y: auto; padding: 12px; display: flex; flex-direction: column; gap: 10px; }
         .msg { max-width: 85%; padding: 10px 14px; border-radius: 14px; font-size: 0.9rem; line-height: 1.5; }
         .msg-user { align-self: flex-end; background: var(--user-msg); color: white; border-bottom-right-radius: 2px; }
@@ -63,17 +67,17 @@
         </div>
     </div>
 
-    <!-- 新增项目弹窗（增加卡路里输入） -->
+    <!-- 新增项目弹窗 -->
     <div id="addTaskModal" class="modal-overlay" onclick="if(event.target===this) closeAddTaskModal()">
         <div class="modal-content">
             <h3 style="margin-top:0">🆕 新增训练项目</h3>
             <input type="text" id="manualTaskInput" style="width:100%;padding:12px;border:1px solid var(--border);border-radius:10px;margin-bottom:12px;" placeholder="项目名称（如：卷腹 30个）">
-            <input type="number" id="manualCalInput" style="width:100%;padding:12px;border:1px solid var(--border);border-radius:10px;margin-bottom:15px;" placeholder="消耗卡路里（如：5）">
-            <div style="display:flex;justify-content:flex-end;gap:8px;"><button class="small-btn" onclick="closeAddTaskModal()">取消</button><button class="ai-btn" style="margin:0" onclick="saveTaskManual()">添加项目</button></div>
+            <input type="number" id="manualCalInput" style="width:100%;padding:12px;border:1px solid var(--border);border-radius:10px;margin-bottom:15px;" placeholder="设定消耗卡路里">
+            <div style="display:flex;justify-content:flex-end;gap:8px;"><button class="small-btn" onclick="closeAddTaskModal()">取消</button><button class="ai-btn" style="margin:0" onclick="saveTaskManual()">添加</button></div>
         </div>
     </div>
 
-    <!-- 书架相关弹窗略... (保持之前的逻辑) -->
+    <!-- 书架录入弹窗 -->
     <div id="addQuoteModal" class="modal-overlay" onclick="if(event.target===this) closeAddQuoteModal()">
         <div class="modal-content">
             <h3 id="quoteModalTitle" style="margin-top:0">🖋️ 录入摘抄</h3>
@@ -131,7 +135,7 @@
                         <input type="password" id="apiKey" placeholder="在此粘贴 Key" style="flex:1; padding:5px 10px; border:1px solid var(--border); border-radius:8px; font-size:0.7rem;">
                         <button class="small-btn" onclick="saveKeyToFirebase()">存云端</button>
                     </div>
-                    <textarea id="aiInput" placeholder="聊聊感受，或说'我刚跑了6公里'估算消耗..."></textarea>
+                    <textarea id="aiInput" placeholder="直接说'我刚做了30个卷腹'，或者随意聊天..."></textarea>
                     <button class="ai-btn" id="aiBtn" onclick="processAI()">发送</button>
                 </div>
             </div>
@@ -164,6 +168,7 @@
         
         let unsubT = null, unsubC = null, unsubS = null;
         let currentTasks = [];
+        let chatsCache = [];
         let quotesCache = [];
 
         onAuthStateChanged(auth, async (user) => {
@@ -192,7 +197,7 @@
         window.saveKeyToFirebase = async () => {
             const key = document.getElementById('apiKey').value.trim();
             await setDoc(doc(db, `users/${currentUser.uid}/settings`, "deepseek"), { apiKey: key, updatedAt: serverTimestamp() });
-            alert("✨ Key 存好了！");
+            alert("✨ 云端同步成功！");
         };
 
         // --- 摘抄逻辑 ---
@@ -221,16 +226,16 @@
         window.closeManageQuotesModal = () => document.getElementById('manageQuotesModal').style.display = 'none';
         function renderManageQuotes() {
             const listEl = document.getElementById('quotesManageList');
-            listEl.innerHTML = quotesCache.map(q => `<div style="background:#f8fafc;padding:10px;border-radius:10px;margin-bottom:8px;font-size:0.85rem;"><div>${q.text}</div><div style="display:flex;justify-content:space-between;margin-top:5px;"><span>📖 ${q.source || ''}</span><div><button class="small-btn" onclick="editQuote('${q.id}')">改</button><button class="small-btn" onclick="deleteQuote('${q.id}')">删</button></div></div></div>`).join('');
+            listEl.innerHTML = quotesCache.map(q => `<div style="background:#f8fafc;padding:10px;border-radius:10px;margin-bottom:8px;font-size:0.85rem;"><div>${q.text}</div><div style="display:flex;justify-content:space-between;margin-top:5px;"><span>📖 ${q.source || ''}</span><div><button class="small-btn" onclick="editQuote('${q.id}')">编辑</button><button class="small-btn" onclick="deleteQuote('${q.id}')">删除</button></div></div></div>`).join('');
         }
         window.editQuote = (id) => {
             const q = quotesCache.find(x => x.id === id);
             document.getElementById('editingQuoteId').value = q.id; document.getElementById('quoteInput').value = q.text; document.getElementById('quoteSource').value = q.source || "";
             document.getElementById('manageQuotesModal').style.display = 'none'; document.getElementById('addQuoteModal').style.display = 'flex';
         };
-        window.deleteQuote = async (id) => { if (confirm("删？")) { await deleteDoc(doc(db, `users/${currentUser.uid}/quotes`, id)); await syncQuotes(); renderManageQuotes(); } };
+        window.deleteQuote = async (id) => { if (confirm("从书架移除？")) { await deleteDoc(doc(db, `users/${currentUser.uid}/quotes`, id)); await syncQuotes(); renderManageQuotes(); } };
 
-        // --- 系统核心 ---
+        // --- 系统初始化与统计 ---
         async function initView(dateStr) {
             document.getElementById('dateDisplay').textContent = dateStr;
             const uid = currentUser.uid;
@@ -240,30 +245,29 @@
                 currentTasks = snap.docs.map(d => ({id: d.id, ...d.data()}));
                 currentTasks.sort((a,b) => a.isDone - b.isDone || a.order - b.order);
                 renderTasks();
-                calculateManualTotal(); // 重新计算已勾选的任务总卡路里
+                calculateTotal(); 
             });
 
             unsubC = onSnapshot(query(collection(db, `users/${uid}/chats`), where("date", "==", dateStr)), (snap) => {
-                const chats = snap.docs.map(d => ({id: d.id, ...d.data()}));
-                chats.sort((a, b) => (a.timestamp?.seconds || 0) - (b.timestamp?.seconds || 0));
-                renderChats(chats);
-                if (chats.length === 0 && dateStr === selectedDate) triggerGreeting();
+                chatsCache = snap.docs.map(d => ({id: d.id, ...d.data()}));
+                chatsCache.sort((a, b) => (a.timestamp?.seconds || 0) - (b.timestamp?.seconds || 0));
+                renderChats(chatsCache);
+                if (chatsCache.length === 0 && dateStr === selectedDate) triggerGreeting();
             });
 
             unsubS = onSnapshot(doc(db, `users/${uid}/dailyStats`, dateStr), (doc) => {
-                // 仅用于获取对话产生的额外卡路里，总显示会结合任务统计
-                const bonus = doc.exists() ? (doc.data().bonusCalories || 0) : 0;
-                calculateManualTotal(bonus);
+                window.bonusCalories = doc.exists() ? (doc.data().bonusCalories || 0) : 0;
+                calculateTotal();
             });
             displayQuoteByDay();
         }
 
-        function calculateManualTotal(bonus = null) {
+        function calculateTotal() {
             const taskSum = currentTasks.reduce((acc, t) => acc + (t.isDone ? (Number(t.calories) || 0) : 0), 0);
-            if (bonus !== null) window.lastBonus = bonus;
-            document.getElementById('totalCalories').textContent = taskSum + (window.lastBonus || 0);
+            document.getElementById('totalCalories').textContent = taskSum + (window.bonusCalories || 0);
         }
 
+        // --- 任务操作 ---
         window.forceInheritTasks = async () => {
             const tCol = collection(db, `users/${currentUser.uid}/tasks`);
             const snapPast = await getDocs(query(tCol, where("date", "<", selectedDate), orderBy("date", "desc"), limit(1)));
@@ -274,7 +278,6 @@
                 const batch = writeBatch(db);
                 snapCurrent.docs.forEach(d => batch.delete(d.ref));
                 await batch.commit();
-                // 重点：继承时要把 calories 数值也带上
                 await Promise.all(snapTasks.docs.map(t => addDoc(tCol, { 
                     title: t.data().title, 
                     calories: t.data().calories || 0,
@@ -306,55 +309,77 @@
             }
         };
 
-        // 仅评价，不再尝试估算或修改卡路里
-        async function triggerTaskComment(title) {
-            const key = document.getElementById('apiKey').value.trim();
-            if (!key) return;
-            try {
-                const res = await fetch("https://api.deepseek.com/chat/completions", {
-                    method: "POST",
-                    headers: { "Content-Type": "application/json", "Authorization": `Bearer ${key}` },
-                    body: JSON.stringify({
-                        model: "deepseek-chat",
-                        messages: [{ role: "system", content: "你是一个幽默的健身搭子。用户刚勾选完成了一项运动任务，请给出一句阳光短促的鼓励评价。" }, { role: "user", content: title }]
-                    })
-                });
-                const text = (await res.json()).choices[0].message.content;
-                await addDoc(collection(db, `users/${currentUser.uid}/chats`), { role: 'coach', text: text, date: selectedDate, timestamp: serverTimestamp() });
-            } catch (e) {}
-        }
-
-        // 聊天识别运动（仅针对未在清单中的运动，增加到 bonusCalories 轨道）
+        // --- 核心 AI 逻辑（支持 50 句上下文） ---
         async function processAI() {
             const input = document.getElementById('aiInput').value.trim();
             const key = document.getElementById('apiKey').value.trim();
             if (!input || !key || isProcessing) return;
-            isProcessing = true; document.getElementById('aiBtn').disabled = true;
+            
+            isProcessing = true;
+            document.getElementById('aiBtn').disabled = true;
+
             try {
+                // 1. 保存用户消息
                 await addDoc(collection(db, `users/${currentUser.uid}/chats`), { role: 'user', text: input, date: selectedDate, timestamp: serverTimestamp() });
                 document.getElementById('aiInput').value = "";
-                
+
+                // 2. 【核心更新】提取最近 50 句对话作为上下文
+                const history = chatsCache.slice(-50).map(c => ({
+                    role: c.role === 'coach' ? 'assistant' : 'user',
+                    content: c.text
+                }));
+
                 const res = await fetch("https://api.deepseek.com/chat/completions", {
                     method: "POST",
                     headers: { "Content-Type": "application/json", "Authorization": `Bearer ${key}` },
                     body: JSON.stringify({
                         model: "deepseek-chat",
                         messages: [
-                            { role: "system", content: "你是健身搭子。如果用户提到做了清单外的运动（如：跑了5公里），请夸奖并估算卡路里。JSON：{ 'coach_reply': '...', 'bonus_calories': 300 }。" },
+                            { role: "system", content: "你是一个阳光幽默、记性极好的健身搭子。你会参考之前的对话历史（上下文）来给予更贴心的反馈。如果用户提到做了清单外的运动，请夸奖并估算卡路里。JSON回复格式：{ 'coach_reply': '...', 'bonus_calories': 300 }。" },
+                            ...history,
                             { role: "user", content: input }
                         ],
                         response_format: { type: "json_object" }
                     })
                 });
+
                 const result = JSON.parse((await res.json()).choices[0].message.content);
                 await addDoc(collection(db, `users/${currentUser.uid}/chats`), { role: 'coach', text: result.coach_reply, date: selectedDate, timestamp: serverTimestamp() });
                 
                 if (result.bonus_calories > 0) {
                     await setDoc(doc(db, `users/${currentUser.uid}/dailyStats`, selectedDate), { bonusCalories: increment(result.bonus_calories) }, { merge: true });
                 }
-            } finally { isProcessing = false; document.getElementById('aiBtn').disabled = false; }
+            } catch (e) {
+                alert("DeepSeek 频率限制，等一分钟再试哦~");
+            } finally {
+                isProcessing = false;
+                document.getElementById('aiBtn').disabled = false;
+            }
         }
         window.processAI = processAI;
+
+        async function triggerTaskComment(title) {
+            const key = document.getElementById('apiKey').value.trim();
+            if (!key) return;
+            // 打卡评价也带上最近 5 条上下文，让评价不生硬
+            const shortHistory = chatsCache.slice(-5).map(c => ({ role: c.role === 'coach' ? 'assistant' : 'user', content: c.text }));
+            try {
+                const res = await fetch("https://api.deepseek.com/chat/completions", {
+                    method: "POST",
+                    headers: { "Content-Type": "application/json", "Authorization": `Bearer ${key}` },
+                    body: JSON.stringify({
+                        model: "deepseek-chat",
+                        messages: [
+                            { role: "system", content: "你是一个幽默的健身搭子。用户刚完成了一个任务，请给出一句阳光短促的鼓励。" },
+                            ...shortHistory,
+                            { role: "user", content: title }
+                        ]
+                    })
+                });
+                const text = (await res.json()).choices[0].message.content;
+                await addDoc(collection(db, `users/${currentUser.uid}/chats`), { role: 'coach', text: text, date: selectedDate, timestamp: serverTimestamp() });
+            } catch (e) {}
+        }
 
         async function triggerGreeting() {
             const key = document.getElementById('apiKey').value.trim();
@@ -365,7 +390,7 @@
                     headers: { "Content-Type": "application/json", "Authorization": `Bearer ${key}` },
                     body: JSON.stringify({
                         model: "deepseek-chat",
-                        messages: [{ role: "system", content: "清晨问候。带名言。40字内。" }]
+                        messages: [{ role: "system", content: "清晨问候。阳光励志，带一句名言。40字内。" }]
                     })
                 });
                 const text = (await res.json()).choices[0].message.content;
@@ -401,9 +426,9 @@
                 closeAddTaskModal(); document.getElementById('manualTaskInput').value = ""; document.getElementById('manualCalInput').value = "";
             }
         };
-        window.deleteTask = async (id) => { if(confirm("删？")) await deleteDoc(doc(db, `users/${currentUser.uid}/tasks`, id)); };
+        window.deleteTask = async (id) => { if(confirm("删除此项目？")) await deleteDoc(doc(db, `users/${currentUser.uid}/tasks`, id)); };
         window.clearChats = async () => { 
-            if(confirm("清？")) {
+            if(confirm("清空今日对话？")) {
                 const batch = writeBatch(db);
                 const q = await getDocs(query(collection(db, `users/${currentUser.uid}/chats`), where("date", "==", selectedDate)));
                 q.forEach(d => batch.delete(d.ref));
