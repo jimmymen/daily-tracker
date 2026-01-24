@@ -1,5 +1,3 @@
---- START OF FILE Paste January 24, 2026 - 5:26PM ---
-
 <!DOCTYPE html>
 <html lang="zh-CN">
 <head>
@@ -213,7 +211,7 @@
         let currentTasks = [];
         let chatsCache = [];
         let quotesCache = [];
-        window.currentBonusCal = 0; // 用于存储当日 AI 奖励的卡路里
+        window.currentBonusCal = 0; 
 
         // --- 函数定义 ---
 
@@ -222,7 +220,7 @@
         function logout() { return signOut(auth); }
 
         async function loadKey() {
-            if (!currentUser) return; // 确保用户已登录
+            if (!currentUser) return; 
             const d = await getDoc(doc(db, `users/${currentUser.uid}/settings`, "deepseek"));
             if (d.exists()) document.getElementById('apiKey').value = d.data().apiKey;
         }
@@ -237,7 +235,7 @@
 
         // 摘抄相关
         async function syncQuotes() {
-            if (!currentUser) return; // 确保用户已登录
+            if (!currentUser) return; 
             const qSnap = await getDocs(query(collection(db, `users/${currentUser.uid}/quotes`), orderBy("timestamp", "desc")));
             quotesCache = qSnap.docs.map(d => ({id: d.id, ...d.data()}));
             displayQuoteByDay();
@@ -384,6 +382,11 @@
                 });
 
                 const result = await res.json();
+                
+                if (result.error) {
+                    throw new Error(result.error.message || 'DeepSeek API 返回错误');
+                }
+                
                 const aiResponse = JSON.parse(result.choices[0].message.content);
                 
                 // 4. 记录教练回复
@@ -395,9 +398,15 @@
                 }
             } catch (e) {
                 console.error("AI处理错误:", e);
-                // 记录错误信息到聊天记录，提醒用户
-                await addDoc(collection(db, `users/${currentUser.uid}/chats`), { role: 'coach', text: "对不起，AI 教练今天有点累了（可能是 Key 或网络问题），请稍后再试。", date: selectedDate, timestamp: serverTimestamp() });
-                alert("DeepSeek 频率限制或 Key 错误，请检查 Key。");
+                const errorMessage = `对不起，AI 教练今天有点累了（可能是 Key 错误、网络连接问题或DeepSeek频率限制）。请检查控制台获取更多错误信息。`;
+                
+                // 记录错误信息到聊天记录
+                await addDoc(collection(db, `users/${currentUser.uid}/chats`), { role: 'coach', text: errorMessage, date: selectedDate, timestamp: serverTimestamp() });
+                
+                if (!key) {
+                     alert("DeepSeek Key 为空，请检查 Key 是否已粘贴或云端 Key 是否已成功加载。");
+                }
+                
             } finally {
                 isProcessing = false;
                 aiBtn.disabled = false;
@@ -407,7 +416,7 @@
         
         async function triggerTaskCoach(title) {
             if (!currentUser) return;
-            const key = document.getElementById('apiKey').value.trim();
+            const key = document.getElementById('apiKey').value.trim(); // 实时获取 Key
             if (!key) return;
             // 确保只取最近的聊天记录，避免 token 爆炸
             const shortHistory = chatsCache.slice(-5).map(c => ({ role: c.role === 'coach' ? 'assistant' : 'user', content: c.text }));
@@ -433,7 +442,7 @@
 
         async function triggerGreeting() {
             if (!currentUser) return;
-            const key = document.getElementById('apiKey').value.trim();
+            const key = document.getElementById('apiKey').value.trim(); // 实时获取 Key
             if (!key) return;
             try {
                 const res = await fetch("https://api.deepseek.com/chat/completions", {
@@ -451,7 +460,7 @@
             }
         }
         
-        // ** 【修复：新增的核心逻辑 1: 实时数据监听函数】 **
+        // 实时数据监听函数
         function initView(date) {
             if (!currentUser) return;
             document.getElementById('dateDisplay').textContent = date;
@@ -460,7 +469,7 @@
             if (unsubT) unsubT();
             if (unsubC) unsubC();
             if (unsubS) unsubS();
-            window.currentBonusCal = 0; // 重置额外卡路里
+            window.currentBonusCal = 0; 
 
             // 任务列表监听
             unsubT = onSnapshot(query(collection(db, `users/${currentUser.uid}/tasks`), where("date", "==", date), orderBy("order", "asc")), (snapshot) => {
@@ -526,7 +535,7 @@
             el.scrollTop = el.scrollHeight;
         }
 
-        // ** 【修复：新增的核心逻辑 2: 认证状态监听】 **
+        // 认证状态监听
         onAuthStateChanged(auth, (user) => {
             if (user) {
                 // 用户已登录
@@ -540,7 +549,6 @@
                 
                 // 2. 检查并触发问候 (可选，确保只触发一次)
                 setTimeout(async () => {
-                    // 仅在当前日期无聊天记录时触发问候
                     const qSnap = await getDocs(query(collection(db, `users/${currentUser.uid}/chats`), where("date", "==", selectedDate), limit(1)));
                     if (qSnap.empty) {
                         triggerGreeting();
@@ -582,7 +590,6 @@
         window.saveTaskManual = saveTaskManual;
         window.deleteTask = deleteTask;
         window.clearChats = clearChats;
-        // 修复了 toggleTask 中 title 参数可能包含单引号导致 JS 错误的问题
         window.toggleTask = toggleTask; 
         window.forceInheritTasks = forceInheritTasks;
         window.initView = initView; 
