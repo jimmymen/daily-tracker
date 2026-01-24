@@ -1,3 +1,5 @@
+--- START OF FILE Paste January 24, 2026 - 5:26PM ---
+
 <!DOCTYPE html>
 <html lang="zh-CN">
 <head>
@@ -158,6 +160,7 @@
                         </div>
                         <textarea id="aiInput" placeholder="直接说'我刚做了30个卷腹'，或者随意聊天..."></textarea>
                         <button class="ai-btn" id="aiBtn" onclick="processAI()">发送</button>
+                        <button class="small-btn" style="float:left; margin-top:14px;" onclick="clearChats()">清空今日对话</button>
                     </div>
                 </div>
 
@@ -210,6 +213,7 @@
         let currentTasks = [];
         let chatsCache = [];
         let quotesCache = [];
+        window.currentBonusCal = 0; // 用于存储当日 AI 奖励的卡路里
 
         // --- 函数定义 ---
 
@@ -224,6 +228,7 @@
 
         window.saveKeyToFirebase = async () => {
             const key = document.getElementById('apiKey').value.trim();
+            if (!key) return;
             await setDoc(doc(db, `users/${currentUser.uid}/settings`, "deepseek"), { apiKey: key, updatedAt: serverTimestamp() });
             alert("✨ 云端同步成功！");
         };
@@ -235,7 +240,7 @@
             displayQuoteByDay();
         }
         function displayQuoteByDay() {
-            if (quotesCache.length === 0) { document.getElementById('quoteText').textContent = "书架还没书哦"; return; }
+            if (quotesCache.length === 0) { document.getElementById('quoteText').textContent = "书架还没书哦"; document.getElementById('quoteBook').textContent = "—— 试试录入书摘吧"; return; }
             const q = quotesCache[parseInt(selectedDate.replace(/-/g, '')) % quotesCache.length];
             document.getElementById('quoteText').textContent = `“${q.text}”`;
             document.getElementById('quoteBook').textContent = `—— ${q.source || '未知'}`;
@@ -295,6 +300,8 @@
                 const q = await getDocs(query(collection(db, `users/${currentUser.uid}/chats`), where("date", "==", selectedDate)));
                 q.forEach(d => batch.delete(d.ref));
                 await batch.commit();
+                // 清除额外卡路里
+                await setDoc(doc(db, `users/${currentUser.uid}/dailyStats`, selectedDate), { bonusCalories: 0 }, { merge: true });
             }
         }
         async function toggleTask(id, s, title) {
@@ -308,22 +315,34 @@
         }
         async function forceInheritTasks() {
             const tCol = collection(db, `users/${currentUser.uid}/tasks`);
+            // 1. 查找上一个有任务的日期
             const snapPast = await getDocs(query(tCol, where("date", "<", selectedDate), orderBy("date", "desc"), limit(1)));
-            if (!snapPast.empty) {
-                const sourceDate = snapPast.docs[0].data().date;
-                const snapTasks = await getDocs(query(tCol, where("date", "==", sourceDate)));
-                const snapCurrent = await getDocs(query(tCol, where("date", "==", selectedDate)));
-                const batch = writeBatch(db);
-                snapCurrent.docs.forEach(d => batch.delete(d.ref));
-                await batch.commit();
-                await Promise.all(snapTasks.docs.map(t => addDoc(tCol, { 
+            if (snapPast.empty) { alert("未找到前序任务记录。"); return; }
+            
+            const sourceDate = snapPast.docs[0].data().date;
+            // 2. 获取该日期的所有任务 (包括已完成的)
+            const snapTasks = await getDocs(query(tCol, where("date", "==", sourceDate)));
+            
+            // 3. 删除当前日期的所有任务
+            const snapCurrent = await getDocs(query(tCol, where("date", "==", selectedDate)));
+            const deleteBatch = writeBatch(db);
+            snapCurrent.docs.forEach(d => deleteBatch.delete(d.ref));
+            await deleteBatch.commit();
+
+            // 4. 重新添加任务到当前日期 (全部设为未完成)
+            const addBatch = writeBatch(db);
+            snapTasks.docs.forEach(t => {
+                const newTaskRef = doc(tCol);
+                addBatch.set(newTaskRef, { 
                     title: t.data().title, 
                     calories: t.data().calories || 0,
                     date: selectedDate, 
-                    isDone: false, 
+                    isDone: false, // 强制设为未完成
                     order: t.data().order || Date.now() 
-                })));
-            }
+                });
+            });
+            await addBatch.commit();
+            alert(`已从 ${sourceDate} 同步任务，并设为待办。`);
         }
 
         // AI 核心逻辑
@@ -339,18 +358,21 @@
             aiBtn.textContent = "发送中..."; 
 
             try {
+                // 1. 记录用户输入
                 await addDoc(collection(db, `users/${currentUser.uid}/chats`), { role: 'user', text: input, date: selectedDate, timestamp: serverTimestamp() });
                 document.getElementById('aiInput').value = "";
 
+                // 2. 准备历史对话
                 const history = chatsCache.slice(-50).map(c => ({ role: c.role === 'coach' ? 'assistant' : 'user', content: c.text }));
 
+                // 3. 调用 DeepSeek API
                 const res = await fetch("https://api.deepseek.com/chat/completions", {
                     method: "POST",
                     headers: { "Content-Type": "application/json", "Authorization": `Bearer ${key}` },
                     body: JSON.stringify({
                         model: "deepseek-chat",
                         messages: [
-                            { role: "system", content: "你是一个阳光幽默、记性极好的私人教练。你会参考对话历史来给予贴心反馈。如果用户提到做了清单外的运动，请夸奖并估算卡路里。JSON格式回复：{ 'coach_reply': '...', 'bonus_calories': 300 }。" },
+                            { role: "system", content: "你是一个阳光幽默、记性极好的私人教练。你会参考对话历史来给予贴心反馈。如果用户提到做了清单外的运动，请夸奖并估算卡路里。JSON格式回复：{ 'coach_reply': '...', 'bonus_calories': 300 }。bonus_calories只在估算卡路里时提供，否则为0。" },
                             ...history,
                             { role: "user", content: input }
                         ],
@@ -358,27 +380,32 @@
                     })
                 });
 
-                const result = JSON.parse((await res.json()).choices[0].message.content);
-                await addDoc(collection(db, `users/${currentUser.uid}/chats`), { role: 'coach', text: result.coach_reply, date: selectedDate, timestamp: serverTimestamp() });
+                const result = await res.json();
+                const aiResponse = JSON.parse(result.choices[0].message.content);
                 
-                if (result.bonus_calories > 0) {
-                    await setDoc(doc(db, `users/${currentUser.uid}/dailyStats`, selectedDate), { bonusCalories: increment(result.bonus_calories) }, { merge: true });
+                // 4. 记录教练回复
+                await addDoc(collection(db, `users/${currentUser.uid}/chats`), { role: 'coach', text: aiResponse.coach_reply, date: selectedDate, timestamp: serverTimestamp() });
+                
+                // 5. 记录额外卡路里
+                if (aiResponse.bonus_calories > 0) {
+                    await setDoc(doc(db, `users/${currentUser.uid}/dailyStats`, selectedDate), { bonusCalories: increment(aiResponse.bonus_calories) }, { merge: true });
                 }
             } catch (e) {
                 console.error("AI处理错误:", e);
-                alert("DeepSeek 频率限制或 Key 错误，请稍后再试。");
+                // 记录错误信息到聊天记录，提醒用户
+                await addDoc(collection(db, `users/${currentUser.uid}/chats`), { role: 'coach', text: "对不起，AI 教练今天有点累了（可能是 Key 或网络问题），请稍后再试。", date: selectedDate, timestamp: serverTimestamp() });
+                alert("DeepSeek 频率限制或 Key 错误，请检查 Key。");
             } finally {
-                setTimeout(() => {
-                    isProcessing = false;
-                    aiBtn.disabled = false;
-                    aiBtn.textContent = "发送";
-                }, 100); 
+                isProcessing = false;
+                aiBtn.disabled = false;
+                aiBtn.textContent = "发送";
             }
         }
         
         async function triggerTaskCoach(title) {
             const key = document.getElementById('apiKey').value.trim();
             if (!key) return;
+            // 确保只取最近的聊天记录，避免 token 爆炸
             const shortHistory = chatsCache.slice(-5).map(c => ({ role: c.role === 'coach' ? 'assistant' : 'user', content: c.text }));
             try {
                 const res = await fetch("https://api.deepseek.com/chat/completions", {
@@ -395,7 +422,9 @@
                 });
                 const text = (await res.json()).choices[0].message.content;
                 await addDoc(collection(db, `users/${currentUser.uid}/chats`), { role: 'coach', text: text, date: selectedDate, timestamp: serverTimestamp() });
-            } catch (e) {}
+            } catch (e) {
+                // 静默失败，不影响主流程
+            }
         }
 
         async function triggerGreeting() {
@@ -412,7 +441,46 @@
                 });
                 const text = (await res.json()).choices[0].message.content;
                 await addDoc(collection(db, `users/${currentUser.uid}/chats`), { role: 'coach', text: text, date: selectedDate, timestamp: serverTimestamp() });
-            } catch (e) {}
+            } catch (e) {
+                 // 静默失败，不影响主流程
+            }
+        }
+        
+        // ** 【新增的核心逻辑 1: 实时数据监听函数】 **
+        function initView(date) {
+            document.getElementById('dateDisplay').textContent = date;
+            
+            // 停止之前的监听
+            if (unsubT) unsubT();
+            if (unsubC) unsubC();
+            if (unsubS) unsubS();
+
+            // 任务列表监听
+            unsubT = onSnapshot(query(collection(db, `users/${currentUser.uid}/tasks`), where("date", "==", date), orderBy("order", "asc")), (snapshot) => {
+                currentTasks = snapshot.docs.map(d => ({id: d.id, ...d.data()}));
+                renderTasks();
+                // 每次任务更新时，重新计算任务卡路里并更新总卡路里显示
+                const totalTaskCal = currentTasks.filter(t => t.isDone).reduce((sum, t) => sum + (t.calories || 0), 0);
+                document.getElementById('totalCalories').textContent = totalTaskCal + (window.currentBonusCal || 0);
+            });
+
+            // 聊天记录监听
+            unsubC = onSnapshot(query(collection(db, `users/${currentUser.uid}/chats`), where("date", "==", date), orderBy("timestamp", "asc")), (snapshot) => {
+                chatsCache = snapshot.docs.map(d => ({id: d.id, ...d.data()}));
+                renderChats(chatsCache);
+            });
+            
+            // 每日统计和额外卡路里监听
+            unsubS = onSnapshot(doc(db, `users/${currentUser.uid}/dailyStats`, date), (docSnap) => {
+                const bonusCal = docSnap.exists() ? (docSnap.data().bonusCalories || 0) : 0;
+                window.currentBonusCal = bonusCal; // 更新全局变量
+                // 重新计算总卡路里
+                const totalTaskCal = currentTasks.filter(t => t.isDone).reduce((sum, t) => sum + (t.calories || 0), 0);
+                document.getElementById('totalCalories').textContent = totalTaskCal + bonusCal;
+            });
+
+            syncQuotes(); // 加载并显示书摘
+            loadKey();    // 加载云端 API Key
         }
 
         // 视图渲染与状态计算
@@ -422,10 +490,13 @@
             let todoHtml = '';
             let doneHtml = '';
 
-            currentTasks.forEach(t => {
+            // 排序: 未完成在前，已完成在后
+            const sortedTasks = [...currentTasks].sort((a, b) => a.order - b.order); 
+
+            sortedTasks.forEach(t => {
                 const itemHtml = `
                     <div class="task-item ${t.isDone ? 'done' : ''}">
-                        <div class="checkbox" onclick="toggleTask('${t.id}', ${t.isDone}, '${t.title}')"></div>
+                        <div class="checkbox" onclick="toggleTask('${t.id}', ${t.isDone}, '${t.title.replace(/'/g, "\\'")}')"></div>
                         <div class="task-title">${t.title}</div>
                         ${t.calories > 0 ? `<div class="task-cal-tag">${t.calories} kcal</div>` : ''}
                         <button style="border:none;background:none;cursor:pointer;color:#ef4444" onclick="deleteTask('${t.id}')">🗑️</button>
@@ -447,6 +518,41 @@
             el.innerHTML = chats.map(c => `<div class="msg msg-${c.role}">${c.text}</div>`).join('');
             el.scrollTop = el.scrollHeight;
         }
+
+        // ** 【新增的核心逻辑 2: 认证状态监听】 **
+        onAuthStateChanged(auth, (user) => {
+            if (user) {
+                // 用户已登录
+                currentUser = user;
+                document.getElementById('userName').textContent = `你好，${user.displayName || user.email}`;
+                document.getElementById('loginScreen').style.display = 'none';
+                document.getElementById('app').style.display = 'flex';
+                
+                // 1. 初始化视图：加载当前日期的数据
+                initView(selectedDate);
+                
+                // 2. 检查并触发问候 (可选，避免每次刷新都触发)
+                setTimeout(async () => {
+                    const qSnap = await getDocs(query(collection(db, `users/${currentUser.uid}/chats`), where("date", "==", selectedDate), limit(1)));
+                    if (qSnap.empty) {
+                        triggerGreeting();
+                    }
+                }, 1000); 
+
+            } else {
+                // 用户未登录或已登出
+                currentUser = null;
+                document.getElementById('userName').textContent = `你好`;
+                document.getElementById('loginScreen').style.display = 'flex';
+                document.getElementById('app').style.display = 'none';
+
+                // 停止实时监听
+                if (unsubT) unsubT();
+                if (unsubC) unsubC();
+                if (unsubS) unsubS();
+            }
+        });
+
 
         // --- 统一挂载到 window 对象（解决 is not defined 错误） ---
         window.login = login;
@@ -470,8 +576,8 @@
         window.clearChats = clearChats;
         window.toggleTask = toggleTask;
         window.forceInheritTasks = forceInheritTasks;
-
-        // processAI/triggerTaskCoach/triggerGreeting 已在定义时做了 window 挂载
+        window.initView = initView; // 确保 initView 可被访问
+        window.processAI = processAI;
     </script>
 </body>
 </html>
