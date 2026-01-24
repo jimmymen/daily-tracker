@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
-    <title>进化清单 Pro - 专业教练版</title>
+    <title>进化清单 Pro - 布局终极版</title>
     <style>
         :root {
             --primary: #3b82f6; --bg: #fdfdfd; --border: #e2e8f0;
@@ -12,16 +12,23 @@
         }
         * { box-sizing: border-box; -webkit-tap-highlight-color: transparent; }
         body { font-family: "PingFang SC", "Microsoft YaHei", serif; background: var(--bg); margin: 0; padding: 8px; color: #1e293b; }
+        
+        /* 核心布局容器 */
         .container { max-width: 1100px; margin: 0 auto; display: flex; flex-direction: column; gap: 10px; }
+        .main-layout { display: flex; flex-direction: column; gap: 10px; }
 
         .header { background: linear-gradient(135deg, #2563eb, #3b82f6); color: white; padding: 12px 20px; border-radius: 15px; display: flex; justify-content: space-between; align-items: center; }
         
-        /* 卡路里统计 */
+        /* 布局顺序控制 (移动端默认) */
+        .quote-card-wrapper { order: 1; }
+        .stat-card-wrapper { order: 2; }
+        .date-nav-wrapper { order: 3; }
+        .main-content { order: 4; }
+
         .stat-card { background: white; border: 1px solid var(--border); padding: 15px; border-radius: 16px; text-align: center; box-shadow: 0 2px 8px rgba(0,0,0,0.05); }
         .stat-val { font-size: 2.2rem; font-weight: 900; color: #f59e0b; }
         .stat-label { font-size: 0.8rem; color: #64748b; font-weight: bold; margin-top: 4px; }
 
-        /* 每日摘抄 */
         .quote-card { background: var(--quote-bg); border: 1px dashed #bae6fd; border-radius: 15px; padding: 15px; text-align: center; cursor: pointer; min-height: 80px; display: flex; flex-direction: column; justify-content: center; }
         #quoteText { font-size: 0.9rem; color: var(--quote-text); font-style: italic; font-weight: 500; }
         #quoteBook { font-size: 0.7rem; color: #64748b; margin-top: 5px; }
@@ -29,19 +36,23 @@
         .date-nav-wrapper { display: flex; align-items: center; gap: 10px; background: #fff; padding: 8px 15px; border-radius: 12px; border: 1px solid var(--border); }
         .date-str { font-weight: 800; color: var(--primary); font-size: 0.9rem; }
 
-        /* 主布局 - 移动端（默认堆叠顺序） */
+        /* 主内容区域内部的顺序控制 (移动端) */
         .main-content { display: flex; flex-direction: column; gap: 10px; }
         .chat-section { order: 1; }
         .task-section-todo { order: 2; }
         .task-section-done { order: 3; }
-        .task-box { background: white; border: 1px solid var(--border); border-radius: 15px; padding: 12px; margin-top: 10px; }
+        .task-box { background: white; border: 1px solid var(--border); border-radius: 15px; padding: 12px; }
         
+        /* 桌面端布局 */
         @media (min-width: 850px) { 
             .main-content { display: grid; grid-template-columns: 1fr 1fr; gap: 20px; } 
-            .chat-section { order: initial; grid-column: 2 / 3; }
-            .task-section-todo { order: initial; grid-column: 1 / 2; }
-            .task-section-done { order: initial; grid-column: 1 / 2; }
-            .chat-box { height: calc(100vh - 480px) !important; }
+            .chat-section { order: initial; grid-column: 2 / 3; grid-row: 1 / span 3; } /* 占据右侧全部 */
+            .task-section-todo { order: initial; grid-column: 1 / 2; grid-row: 1 / 2; }
+            .task-section-done { order: initial; grid-column: 1 / 2; grid-row: 2 / 3; }
+            .chat-box { height: calc(100vh - 380px) !important; }
+
+            /* 调整最外层布局，让名言和统计依然堆叠在顶部 */
+            .main-layout { display: block; }
         }
 
         /* 任务清单样式 */
@@ -110,54 +121,66 @@
                 <button class="small-btn" onclick="logout()" style="color:white; border-color:white; background:transparent;">退出</button>
             </div>
         </div>
-        
-        <!-- 名言警句 - 移动到卡路里上方 -->
-        <div class="quote-card" onclick="refreshQuote()">
-            <div id="quoteText">“加载中...”</div>
-            <div id="quoteBook">—— 加载中</div>
-        </div>
 
-        <div class="stat-card">
-            <div id="totalCalories" class="stat-val">0</div>
-            <div class="stat-label">🔥 今日总消耗 (kcal)</div>
-        </div>
-
-        <div class="date-nav-wrapper">
-            <button onclick="changeDate(-1)" style="border:none;background:none;font-size:1.2rem;">◀</button>
-            <div id="dateDisplay" class="date-str"></div>
-            <button onclick="changeDate(1)" style="border:none;background:none;font-size:1.2rem;">▶</button>
-        </div>
-
-        <div class="main-content">
-            <!-- 聊天区域 - 移动端 order 1 -->
-            <div class="chat-section">
-                <div id="chatBox" class="chat-box"></div>
-                <div class="input-area">
-                    <div style="display:flex; gap:8px; margin-bottom:8px;">
-                        <input type="password" id="apiKey" placeholder="在此粘贴 Key" style="flex:1; padding:5px 10px; border:1px solid var(--border); border-radius:8px; font-size:0.7rem;">
-                        <button class="small-btn" onclick="saveKeyToFirebase()">存云端</button>
-                    </div>
-                    <textarea id="aiInput" placeholder="直接说'我刚做了30个卷腹'，或者随意聊天..."></textarea>
-                    <button class="ai-btn" id="aiBtn" onclick="processAI()">发送</button>
+        <!-- 外层布局控制，以便调整顺序 -->
+        <div class="main-layout">
+            
+            <!-- 名言警句 -->
+            <div class="quote-card-wrapper">
+                <div class="quote-card" onclick="refreshQuote()">
+                    <div id="quoteText">“加载中...”</div>
+                    <div id="quoteBook">—— 加载中</div>
                 </div>
             </div>
 
-            <!-- 未完成项目 - 移动端 order 2 -->
-            <div class="task-section-todo task-box">
-                <div style="display:flex; justify-content:space-between; margin-bottom:12px;">
-                    <span style="font-weight:800; font-size:0.85rem; color:#64748b;">📋 待办清单</span>
-                    <div style="display:flex; gap:8px;">
-                        <button class="small-btn" onclick="forceInheritTasks()">🔄 同步前序</button>
-                        <button class="small-btn" onclick="openAddTaskModal()">+ 增加</button>
-                    </div>
+            <!-- 卡路里统计 -->
+            <div class="stat-card-wrapper">
+                <div class="stat-card">
+                    <div id="totalCalories" class="stat-val">0</div>
+                    <div class="stat-label">🔥 今日总消耗 (kcal)</div>
                 </div>
-                <div id="todoList" class="task-list"></div>
             </div>
 
-            <!-- 已完成项目 - 移动端 order 3 -->
-            <div class="task-section-done task-box">
-                <span style="font-weight:800; font-size:0.85rem; color:#64748b; display:block; margin-bottom:12px;">✅ 今日已完成</span>
-                <div id="doneList" class="task-list"></div>
+            <!-- 日期导航 -->
+            <div class="date-nav-wrapper">
+                <button onclick="changeDate(-1)" style="border:none;background:none;font-size:1.2rem;">◀</button>
+                <div id="dateDisplay" class="date-str"></div>
+                <button onclick="changeDate(1)" style="border:none;background:none;font-size:1.2rem;">▶</button>
+            </div>
+
+            <!-- 主内容区域 (任务和聊天) -->
+            <div class="main-content">
+                
+                <!-- 聊天区域 -->
+                <div class="chat-section">
+                    <div id="chatBox" class="chat-box"></div>
+                    <div class="input-area">
+                        <div style="display:flex; gap:8px; margin-bottom:8px;">
+                            <input type="password" id="apiKey" placeholder="在此粘贴 Key" style="flex:1; padding:5px 10px; border:1px solid var(--border); border-radius:8px; font-size:0.7rem;">
+                            <button class="small-btn" onclick="saveKeyToFirebase()">存云端</button>
+                        </div>
+                        <textarea id="aiInput" placeholder="直接说'我刚做了30个卷腹'，或者随意聊天..."></textarea>
+                        <button class="ai-btn" id="aiBtn" onclick="processAI()">发送</button>
+                    </div>
+                </div>
+
+                <!-- 未完成项目 -->
+                <div class="task-section-todo task-box">
+                    <div style="display:flex; justify-content:space-between; margin-bottom:12px;">
+                        <span style="font-weight:800; font-size:0.85rem; color:#64748b;">📋 待办清单</span>
+                        <div style="display:flex; gap:8px;">
+                            <button class="small-btn" onclick="forceInheritTasks()">🔄 同步前序</button>
+                            <button class="small-btn" onclick="openAddTaskModal()">+ 增加</button>
+                        </div>
+                    </div>
+                    <div id="todoList" class="task-list"></div>
+                </div>
+
+                <!-- 已完成项目 -->
+                <div class="task-section-done task-box">
+                    <span style="font-weight:800; font-size:0.85rem; color:#64748b; display:block; margin-bottom:12px;">✅ 今日已完成</span>
+                    <div id="doneList" class="task-list"></div>
+                </div>
             </div>
         </div>
     </div>
@@ -220,7 +243,7 @@
             alert("✨ 云端同步成功！");
         };
 
-        // --- 摘抄逻辑（保持不变） ---
+        // --- 摘抄逻辑（略） ---
         async function syncQuotes() {
             const qSnap = await getDocs(query(collection(db, `users/${currentUser.uid}/quotes`), orderBy("timestamp", "desc")));
             quotesCache = qSnap.docs.map(d => ({id: d.id, ...d.data()}));
@@ -364,7 +387,6 @@
             } catch (e) {
                 alert("DeepSeek 频率限制或 Key 错误，请稍后再试。");
             } finally {
-                // 确保在try/catch结束后重置状态，修复了发送无反应的问题
                 isProcessing = false;
                 document.getElementById('aiBtn').disabled = false;
             }
@@ -414,8 +436,7 @@
             el.innerHTML = chats.map(c => `<div class="msg msg-${c.role}">${c.text}</div>`).join('');
             el.scrollTop = el.scrollHeight;
         }
-        
-        // --- 基础功能（保持不变） ---
+
         window.forceInheritTasks = async () => {
             const tCol = collection(db, `users/${currentUser.uid}/tasks`);
             const snapPast = await getDocs(query(tCol, where("date", "<", selectedDate), orderBy("date", "desc"), limit(1)));
