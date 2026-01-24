@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
-    <title>进化清单 Pro - 深度记忆版</title>
+    <title>进化清单 Pro - 专业教练版</title>
     <style>
         :root {
             --primary: #3b82f6; --bg: #fdfdfd; --border: #e2e8f0;
@@ -245,7 +245,7 @@
                 currentTasks = snap.docs.map(d => ({id: d.id, ...d.data()}));
                 currentTasks.sort((a,b) => a.isDone - b.isDone || a.order - b.order);
                 renderTasks();
-                calculateTotal(); 
+                calculateTotal();
             });
 
             unsubC = onSnapshot(query(collection(db, `users/${uid}/chats`), where("date", "==", dateStr)), (snap) => {
@@ -263,8 +263,11 @@
         }
 
         function calculateTotal() {
+            // 已完成任务手动设定的卡路里总和
             const taskSum = currentTasks.reduce((acc, t) => acc + (t.isDone ? (Number(t.calories) || 0) : 0), 0);
-            document.getElementById('totalCalories').textContent = taskSum + (window.bonusCalories || 0);
+            // 对话中 AI 估算的额外卡路里总和
+            const bonus = window.bonusCalories || 0;
+            document.getElementById('totalCalories').textContent = taskSum + bonus;
         }
 
         // --- 任务操作 ---
@@ -305,29 +308,46 @@
             await updateDoc(doc(db, `users/${currentUser.uid}/tasks`, id), { isDone: newStatus });
             if (newStatus) {
                 await addDoc(collection(db, `users/${currentUser.uid}/chats`), { role: 'user', text: `打卡完成：${title}！💪`, date: selectedDate, timestamp: serverTimestamp() });
-                triggerTaskComment(title);
+                triggerTaskCoach(title); // 触发专业教练反馈
             }
         };
 
-        // --- 核心 AI 逻辑（支持 50 句上下文） ---
+        // --- 核心 AI 逻辑 1：动作专业反馈 ---
+        async function triggerTaskCoach(title) {
+            const key = document.getElementById('apiKey').value.trim();
+            if (!key) return;
+            const shortHistory = chatsCache.slice(-5).map(c => ({ role: c.role === 'coach' ? 'assistant' : 'user', content: c.text }));
+            try {
+                const res = await fetch("https://api.deepseek.com/chat/completions", {
+                    method: "POST",
+                    headers: { "Content-Type": "application/json", "Authorization": `Bearer ${key}` },
+                    body: JSON.stringify({
+                        model: "deepseek-chat",
+                        messages: [
+                            { role: "system", content: "你是一个专业的私人教练。用户刚完成一个任务，请给出一条关于该动作的**专业建议、注意事项或细节**，帮助用户做得更标准、避免受伤。回复不超过 80 字。" },
+                            ...shortHistory,
+                            { role: "user", content: `针对我的任务：${title}，给我专业反馈。` }
+                        ]
+                    })
+                });
+                const text = (await res.json()).choices[0].message.content;
+                await addDoc(collection(db, `users/${currentUser.uid}/chats`), { role: 'coach', text: text, date: selectedDate, timestamp: serverTimestamp() });
+            } catch (e) {}
+        }
+        
+        // --- 核心 AI 逻辑 2：深度聊天与额外运动估算 ---
         async function processAI() {
             const input = document.getElementById('aiInput').value.trim();
             const key = document.getElementById('apiKey').value.trim();
             if (!input || !key || isProcessing) return;
-            
-            isProcessing = true;
-            document.getElementById('aiBtn').disabled = true;
+            isProcessing = true; document.getElementById('aiBtn').disabled = true;
 
             try {
-                // 1. 保存用户消息
                 await addDoc(collection(db, `users/${currentUser.uid}/chats`), { role: 'user', text: input, date: selectedDate, timestamp: serverTimestamp() });
                 document.getElementById('aiInput').value = "";
 
-                // 2. 【核心更新】提取最近 50 句对话作为上下文
-                const history = chatsCache.slice(-50).map(c => ({
-                    role: c.role === 'coach' ? 'assistant' : 'user',
-                    content: c.text
-                }));
+                // 提取最近 50 句对话作为上下文
+                const history = chatsCache.slice(-50).map(c => ({ role: c.role === 'coach' ? 'assistant' : 'user', content: c.text }));
 
                 const res = await fetch("https://api.deepseek.com/chat/completions", {
                     method: "POST",
@@ -335,7 +355,7 @@
                     body: JSON.stringify({
                         model: "deepseek-chat",
                         messages: [
-                            { role: "system", content: "你是一个阳光幽默、记性极好的健身搭子。你会参考之前的对话历史（上下文）来给予更贴心的反馈。如果用户提到做了清单外的运动，请夸奖并估算卡路里。JSON回复格式：{ 'coach_reply': '...', 'bonus_calories': 300 }。" },
+                            { role: "system", content: "你是一个阳光幽默、记性极好的私人教练。你会参考对话历史来给予贴心反馈。如果用户提到做了清单外的运动，请夸奖并估算卡路里。JSON格式回复：{ 'coach_reply': '...', 'bonus_calories': 300 }。" },
                             ...history,
                             { role: "user", content: input }
                         ],
@@ -350,35 +370,11 @@
                     await setDoc(doc(db, `users/${currentUser.uid}/dailyStats`, selectedDate), { bonusCalories: increment(result.bonus_calories) }, { merge: true });
                 }
             } catch (e) {
-                alert("DeepSeek 频率限制，等一分钟再试哦~");
+                alert("DeepSeek 频率限制或 Key 错误，请稍后再试。");
             } finally {
                 isProcessing = false;
                 document.getElementById('aiBtn').disabled = false;
             }
-        }
-        window.processAI = processAI;
-
-        async function triggerTaskComment(title) {
-            const key = document.getElementById('apiKey').value.trim();
-            if (!key) return;
-            // 打卡评价也带上最近 5 条上下文，让评价不生硬
-            const shortHistory = chatsCache.slice(-5).map(c => ({ role: c.role === 'coach' ? 'assistant' : 'user', content: c.text }));
-            try {
-                const res = await fetch("https://api.deepseek.com/chat/completions", {
-                    method: "POST",
-                    headers: { "Content-Type": "application/json", "Authorization": `Bearer ${key}` },
-                    body: JSON.stringify({
-                        model: "deepseek-chat",
-                        messages: [
-                            { role: "system", content: "你是一个幽默的健身搭子。用户刚完成了一个任务，请给出一句阳光短促的鼓励。" },
-                            ...shortHistory,
-                            { role: "user", content: title }
-                        ]
-                    })
-                });
-                const text = (await res.json()).choices[0].message.content;
-                await addDoc(collection(db, `users/${currentUser.uid}/chats`), { role: 'coach', text: text, date: selectedDate, timestamp: serverTimestamp() });
-            } catch (e) {}
         }
 
         async function triggerGreeting() {
