@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
-    <title>进化清单 Pro - 智能教练版</title>
+    <title>进化清单 Pro - 手动精准版</title>
     <style>
         :root {
             --primary: #3b82f6; --bg: #fdfdfd; --border: #e2e8f0;
@@ -16,12 +16,10 @@
 
         .header { background: linear-gradient(135deg, #2563eb, #3b82f6); color: white; padding: 12px 20px; border-radius: 15px; display: flex; justify-content: space-between; align-items: center; }
         
-        /* 统计卡片 */
         .stat-card { background: white; border: 1px solid var(--border); padding: 15px; border-radius: 16px; text-align: center; box-shadow: 0 2px 8px rgba(0,0,0,0.05); }
         .stat-val { font-size: 2.2rem; font-weight: 900; color: #f59e0b; }
         .stat-label { font-size: 0.8rem; color: #64748b; font-weight: bold; margin-top: 4px; }
 
-        /* 每日摘抄卡片 */
         .quote-card { background: var(--quote-bg); border: 1px dashed #bae6fd; border-radius: 15px; padding: 15px; text-align: center; cursor: pointer; min-height: 80px; display: flex; flex-direction: column; justify-content: center; }
         #quoteText { font-size: 0.9rem; color: var(--quote-text); font-style: italic; font-weight: 500; }
         #quoteBook { font-size: 0.7rem; color: #64748b; margin-top: 5px; }
@@ -39,6 +37,7 @@
         .checkbox { width: 24px; height: 24px; border-radius: 50%; border: 2px solid var(--border); margin-right: 12px; cursor: pointer; flex-shrink: 0; }
         .task-item.done .checkbox { background: #10b981; border-color: #10b981; }
         .task-title { flex: 1; font-weight: 600; font-size: 0.95rem; }
+        .task-cal-tag { font-size: 0.7rem; background: #fff7ed; color: #f59e0b; padding: 2px 6px; border-radius: 6px; border: 1px solid #ffedd5; font-weight: bold; margin-right: 10px; }
 
         .chat-box { background: #fff; border: 1px solid var(--border); border-radius: 15px; height: 320px; overflow-y: auto; padding: 12px; display: flex; flex-direction: column; gap: 10px; }
         .msg { max-width: 85%; padding: 10px 14px; border-radius: 14px; font-size: 0.9rem; line-height: 1.5; }
@@ -64,14 +63,17 @@
         </div>
     </div>
 
+    <!-- 新增项目弹窗（增加卡路里输入） -->
     <div id="addTaskModal" class="modal-overlay" onclick="if(event.target===this) closeAddTaskModal()">
         <div class="modal-content">
-            <h3 style="margin-top:0">🆕 新增项目</h3>
-            <input type="text" id="manualTaskInput" style="width:100%;padding:12px;border:1px solid var(--border);border-radius:10px;margin-bottom:15px;" placeholder="例如：卷腹 20个" onkeyup="if(event.key==='Enter') saveTaskManual()">
-            <div style="display:flex;justify-content:flex-end;gap:8px;"><button class="small-btn" onclick="closeAddTaskModal()">取消</button><button class="ai-btn" style="margin:0" onclick="saveTaskManual()">添加</button></div>
+            <h3 style="margin-top:0">🆕 新增训练项目</h3>
+            <input type="text" id="manualTaskInput" style="width:100%;padding:12px;border:1px solid var(--border);border-radius:10px;margin-bottom:12px;" placeholder="项目名称（如：卷腹 30个）">
+            <input type="number" id="manualCalInput" style="width:100%;padding:12px;border:1px solid var(--border);border-radius:10px;margin-bottom:15px;" placeholder="消耗卡路里（如：5）">
+            <div style="display:flex;justify-content:flex-end;gap:8px;"><button class="small-btn" onclick="closeAddTaskModal()">取消</button><button class="ai-btn" style="margin:0" onclick="saveTaskManual()">添加项目</button></div>
         </div>
     </div>
 
+    <!-- 书架相关弹窗略... (保持之前的逻辑) -->
     <div id="addQuoteModal" class="modal-overlay" onclick="if(event.target===this) closeAddQuoteModal()">
         <div class="modal-content">
             <h3 id="quoteModalTitle" style="margin-top:0">🖋️ 录入摘抄</h3>
@@ -81,8 +83,6 @@
         </div>
     </div>
     <div id="manageQuotesModal" class="modal-overlay" onclick="if(event.target===this) closeManageQuotesModal()"><div class="modal-content"><div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:15px;"><h3>📖 我的书架</h3><button class="small-btn" onclick="closeManageQuotesModal()">关闭</button></div><div id="quotesManageList"></div></div></div>
-
-    <div id="loading" style="position:fixed;inset:0;background:rgba(255,255,255,0.8);display:none;justify-content:center;align-items:center;z-index:6000;">🏃‍♂️ 同步中...</div>
 
     <div id="app" class="container" style="display: none;">
         <div class="header">
@@ -131,7 +131,7 @@
                         <input type="password" id="apiKey" placeholder="在此粘贴 Key" style="flex:1; padding:5px 10px; border:1px solid var(--border); border-radius:8px; font-size:0.7rem;">
                         <button class="small-btn" onclick="saveKeyToFirebase()">存云端</button>
                     </div>
-                    <textarea id="aiInput" placeholder="直接说：我刚做了30个卷腹..."></textarea>
+                    <textarea id="aiInput" placeholder="聊聊感受，或说'我刚跑了6公里'估算消耗..."></textarea>
                     <button class="ai-btn" id="aiBtn" onclick="processAI()">发送</button>
                 </div>
             </div>
@@ -192,36 +192,35 @@
         window.saveKeyToFirebase = async () => {
             const key = document.getElementById('apiKey').value.trim();
             await setDoc(doc(db, `users/${currentUser.uid}/settings`, "deepseek"), { apiKey: key, updatedAt: serverTimestamp() });
-            alert("✨ 存好啦！");
+            alert("✨ Key 存好了！");
         };
 
-        // --- 摘抄 ---
+        // --- 摘抄逻辑 ---
         async function syncQuotes() {
             const qSnap = await getDocs(query(collection(db, `users/${currentUser.uid}/quotes`), orderBy("timestamp", "desc")));
             quotesCache = qSnap.docs.map(d => ({id: d.id, ...d.data()}));
             displayQuoteByDay();
         }
         function displayQuoteByDay() {
-            if (quotesCache.length === 0) { document.getElementById('quoteText').textContent = "书架空空如也"; return; }
+            if (quotesCache.length === 0) { document.getElementById('quoteText').textContent = "书架还没书哦"; return; }
             const q = quotesCache[parseInt(selectedDate.replace(/-/g, '')) % quotesCache.length];
             document.getElementById('quoteText').textContent = `“${q.text}”`;
             document.getElementById('quoteBook').textContent = `—— ${q.source || '未知'}`;
         }
         window.refreshQuote = () => { if (quotesCache.length === 0) return; const q = quotesCache[Math.floor(Math.random() * quotesCache.length)]; document.getElementById('quoteText').textContent = `“${q.text}”`; document.getElementById('quoteBook').textContent = `—— ${q.source || '未知'}`; };
-        window.openAddQuoteModal = () => { document.getElementById('editingQuoteId').value = ""; document.getElementById('quoteModalTitle').textContent = "🖋️ 录入摘抄"; document.getElementById('quoteInput').value = ""; document.getElementById('quoteSource').value = ""; document.getElementById('addQuoteModal').style.display = 'flex'; };
+        window.openAddQuoteModal = () => { document.getElementById('editingQuoteId').value = ""; document.getElementById('quoteInput').value = ""; document.getElementById('quoteSource').value = ""; document.getElementById('addQuoteModal').style.display = 'flex'; };
         window.closeAddQuoteModal = () => document.getElementById('addQuoteModal').style.display = 'none';
         window.saveQuoteManual = async () => {
             const text = document.getElementById('quoteInput').value.trim(); const source = document.getElementById('quoteSource').value.trim(); const qId = document.getElementById('editingQuoteId').value;
-            if (!text) return; document.getElementById('loading').style.display = 'flex';
+            if (!text) return;
             if (qId) await updateDoc(doc(db, `users/${currentUser.uid}/quotes`, qId), { text, source });
             else await addDoc(collection(db, `users/${currentUser.uid}/quotes`), { text, source, timestamp: serverTimestamp() });
-            await syncQuotes(); closeAddQuoteModal(); document.getElementById('loading').style.display = 'none';
+            await syncQuotes(); closeAddQuoteModal();
         };
         window.openManageQuotesModal = () => { renderManageQuotes(); document.getElementById('manageQuotesModal').style.display = 'flex'; };
         window.closeManageQuotesModal = () => document.getElementById('manageQuotesModal').style.display = 'none';
         function renderManageQuotes() {
             const listEl = document.getElementById('quotesManageList');
-            if (quotesCache.length === 0) { listEl.innerHTML = "<p style='text-align:center;'>空</p>"; return; }
             listEl.innerHTML = quotesCache.map(q => `<div style="background:#f8fafc;padding:10px;border-radius:10px;margin-bottom:8px;font-size:0.85rem;"><div>${q.text}</div><div style="display:flex;justify-content:space-between;margin-top:5px;"><span>📖 ${q.source || ''}</span><div><button class="small-btn" onclick="editQuote('${q.id}')">改</button><button class="small-btn" onclick="deleteQuote('${q.id}')">删</button></div></div></div>`).join('');
         }
         window.editQuote = (id) => {
@@ -231,7 +230,7 @@
         };
         window.deleteQuote = async (id) => { if (confirm("删？")) { await deleteDoc(doc(db, `users/${currentUser.uid}/quotes`, id)); await syncQuotes(); renderManageQuotes(); } };
 
-        // --- 系统 ---
+        // --- 系统核心 ---
         async function initView(dateStr) {
             document.getElementById('dateDisplay').textContent = dateStr;
             const uid = currentUser.uid;
@@ -241,6 +240,7 @@
                 currentTasks = snap.docs.map(d => ({id: d.id, ...d.data()}));
                 currentTasks.sort((a,b) => a.isDone - b.isDone || a.order - b.order);
                 renderTasks();
+                calculateManualTotal(); // 重新计算已勾选的任务总卡路里
             });
 
             unsubC = onSnapshot(query(collection(db, `users/${uid}/chats`), where("date", "==", dateStr)), (snap) => {
@@ -251,12 +251,20 @@
             });
 
             unsubS = onSnapshot(doc(db, `users/${uid}/dailyStats`, dateStr), (doc) => {
-                document.getElementById('totalCalories').textContent = doc.exists() ? (doc.data().totalCalories || 0) : 0;
+                // 仅用于获取对话产生的额外卡路里，总显示会结合任务统计
+                const bonus = doc.exists() ? (doc.data().bonusCalories || 0) : 0;
+                calculateManualTotal(bonus);
             });
             displayQuoteByDay();
         }
 
-        async function forceInheritTasks() {
+        function calculateManualTotal(bonus = null) {
+            const taskSum = currentTasks.reduce((acc, t) => acc + (t.isDone ? (Number(t.calories) || 0) : 0), 0);
+            if (bonus !== null) window.lastBonus = bonus;
+            document.getElementById('totalCalories').textContent = taskSum + (window.lastBonus || 0);
+        }
+
+        window.forceInheritTasks = async () => {
             const tCol = collection(db, `users/${currentUser.uid}/tasks`);
             const snapPast = await getDocs(query(tCol, where("date", "<", selectedDate), orderBy("date", "desc"), limit(1)));
             if (!snapPast.empty) {
@@ -266,16 +274,23 @@
                 const batch = writeBatch(db);
                 snapCurrent.docs.forEach(d => batch.delete(d.ref));
                 await batch.commit();
-                await Promise.all(snapTasks.docs.map(t => addDoc(tCol, { title: t.data().title, date: selectedDate, isDone: false, order: t.data().order || Date.now() })));
+                // 重点：继承时要把 calories 数值也带上
+                await Promise.all(snapTasks.docs.map(t => addDoc(tCol, { 
+                    title: t.data().title, 
+                    calories: t.data().calories || 0,
+                    date: selectedDate, 
+                    isDone: false, 
+                    order: t.data().order || Date.now() 
+                })));
             }
-        }
-        window.forceInheritTasks = forceInheritTasks;
+        };
 
         function renderTasks() {
             document.getElementById('taskList').innerHTML = currentTasks.map(t => `
                 <div class="task-item ${t.isDone ? 'done' : ''}">
                     <div class="checkbox" onclick="toggleTask('${t.id}', ${t.isDone}, '${t.title}')"></div>
                     <div class="task-title">${t.title}</div>
+                    ${t.calories > 0 ? `<div class="task-cal-tag">${t.calories} kcal</div>` : ''}
                     <button style="border:none;background:none;cursor:pointer;color:#ef4444" onclick="deleteTask('${t.id}')">🗑️</button>
                 </div>
             `).join('');
@@ -287,17 +302,37 @@
             await updateDoc(doc(db, `users/${currentUser.uid}/tasks`, id), { isDone: newStatus });
             if (newStatus) {
                 await addDoc(collection(db, `users/${currentUser.uid}/chats`), { role: 'user', text: `打卡完成：${title}！💪`, date: selectedDate, timestamp: serverTimestamp() });
-                evaluateActivity(title);
+                triggerTaskComment(title);
             }
         };
 
-        // --- 核心估算逻辑：全量评估 ---
-        async function evaluateActivity(text) {
+        // 仅评价，不再尝试估算或修改卡路里
+        async function triggerTaskComment(title) {
             const key = document.getElementById('apiKey').value.trim();
             if (!key) return;
             try {
-                // 汇总今天已完成的所有任务作为背景信息
-                const doneTasks = currentTasks.filter(t => t.isDone).map(t => t.title).join('、');
+                const res = await fetch("https://api.deepseek.com/chat/completions", {
+                    method: "POST",
+                    headers: { "Content-Type": "application/json", "Authorization": `Bearer ${key}` },
+                    body: JSON.stringify({
+                        model: "deepseek-chat",
+                        messages: [{ role: "system", content: "你是一个幽默的健身搭子。用户刚勾选完成了一项运动任务，请给出一句阳光短促的鼓励评价。" }, { role: "user", content: title }]
+                    })
+                });
+                const text = (await res.json()).choices[0].message.content;
+                await addDoc(collection(db, `users/${currentUser.uid}/chats`), { role: 'coach', text: text, date: selectedDate, timestamp: serverTimestamp() });
+            } catch (e) {}
+        }
+
+        // 聊天识别运动（仅针对未在清单中的运动，增加到 bonusCalories 轨道）
+        async function processAI() {
+            const input = document.getElementById('aiInput').value.trim();
+            const key = document.getElementById('apiKey').value.trim();
+            if (!input || !key || isProcessing) return;
+            isProcessing = true; document.getElementById('aiBtn').disabled = true;
+            try {
+                await addDoc(collection(db, `users/${currentUser.uid}/chats`), { role: 'user', text: input, date: selectedDate, timestamp: serverTimestamp() });
+                document.getElementById('aiInput').value = "";
                 
                 const res = await fetch("https://api.deepseek.com/chat/completions", {
                     method: "POST",
@@ -305,23 +340,21 @@
                     body: JSON.stringify({
                         model: "deepseek-chat",
                         messages: [
-                            { role: "system", content: `你是一个阳光幽默的健身搭子。
-                            1. 评价用户的运动，给予鼓励。
-                            2. 严禁返回 0 卡路里。即便动作再小，也要根据运动科学给出一个合理的估算值（例如一组卷腹 15-30kcal）。
-                            3. 参考用户今日累计已完成的任务清单：[${doneTasks}]，如果用户正在进行多组训练，请给出整体评估。
-                            4. 必须返回 JSON：{ "coach_reply": "...", "calories": 100 }` },
-                            { role: "user", content: text }
+                            { role: "system", content: "你是健身搭子。如果用户提到做了清单外的运动（如：跑了5公里），请夸奖并估算卡路里。JSON：{ 'coach_reply': '...', 'bonus_calories': 300 }。" },
+                            { role: "user", content: input }
                         ],
                         response_format: { type: "json_object" }
                     })
                 });
                 const result = JSON.parse((await res.json()).choices[0].message.content);
                 await addDoc(collection(db, `users/${currentUser.uid}/chats`), { role: 'coach', text: result.coach_reply, date: selectedDate, timestamp: serverTimestamp() });
-                if (result.calories > 0) {
-                    await setDoc(doc(db, `users/${currentUser.uid}/dailyStats`, selectedDate), { totalCalories: increment(result.calories) }, { merge: true });
+                
+                if (result.bonus_calories > 0) {
+                    await setDoc(doc(db, `users/${currentUser.uid}/dailyStats`, selectedDate), { bonusCalories: increment(result.bonus_calories) }, { merge: true });
                 }
-            } catch (e) { console.error(e); }
+            } finally { isProcessing = false; document.getElementById('aiBtn').disabled = false; }
         }
+        window.processAI = processAI;
 
         async function triggerGreeting() {
             const key = document.getElementById('apiKey').value.trim();
@@ -332,25 +365,13 @@
                     headers: { "Content-Type": "application/json", "Authorization": `Bearer ${key}` },
                     body: JSON.stringify({
                         model: "deepseek-chat",
-                        messages: [{ role: "system", content: "清晨问候。阳光、励志，带一句名言。40字内。" }]
+                        messages: [{ role: "system", content: "清晨问候。带名言。40字内。" }]
                     })
                 });
                 const text = (await res.json()).choices[0].message.content;
                 await addDoc(collection(db, `users/${currentUser.uid}/chats`), { role: 'coach', text: text, date: selectedDate, timestamp: serverTimestamp() });
-            } catch (e) { console.error(e); }
+            } catch (e) {}
         }
-
-        window.processAI = async () => {
-            const input = document.getElementById('aiInput').value.trim();
-            const key = document.getElementById('apiKey').value.trim();
-            if (!input || !key || isProcessing) return;
-            isProcessing = true; document.getElementById('aiBtn').disabled = true;
-            try {
-                await addDoc(collection(db, `users/${currentUser.uid}/chats`), { role: 'user', text: input, date: selectedDate, timestamp: serverTimestamp() });
-                document.getElementById('aiInput').value = "";
-                evaluateActivity(input);
-            } finally { isProcessing = false; document.getElementById('aiBtn').disabled = false; }
-        };
 
         function renderChats(chats) {
             const el = document.getElementById('chatBox');
@@ -368,9 +389,16 @@
         window.closeAddTaskModal = () => document.getElementById('addTaskModal').style.display = 'none';
         window.saveTaskManual = async () => {
             const title = document.getElementById('manualTaskInput').value.trim();
+            const cal = document.getElementById('manualCalInput').value.trim() || 0;
             if (title) {
-                await addDoc(collection(db, `users/${currentUser.uid}/tasks`), { title, date: selectedDate, isDone: false, order: Date.now() });
-                closeAddTaskModal(); document.getElementById('manualTaskInput').value = "";
+                await addDoc(collection(db, `users/${currentUser.uid}/tasks`), { 
+                    title, 
+                    calories: Number(cal), 
+                    date: selectedDate, 
+                    isDone: false, 
+                    order: Date.now() 
+                });
+                closeAddTaskModal(); document.getElementById('manualTaskInput').value = ""; document.getElementById('manualCalInput').value = "";
             }
         };
         window.deleteTask = async (id) => { if(confirm("删？")) await deleteDoc(doc(db, `users/${currentUser.uid}/tasks`, id)); };
