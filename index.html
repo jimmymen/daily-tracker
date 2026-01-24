@@ -211,6 +211,102 @@
         let chatsCache = [];
         let quotesCache = [];
 
+        // --- 函数定义（所有需要被 HTML onclick 调用的函数都定义在这里） ---
+
+        async function processAI() {
+            const input = document.getElementById('aiInput').value.trim();
+            const key = document.getElementById('apiKey').value.trim();
+            const aiBtn = document.getElementById('aiBtn');
+
+            if (!input || !key || isProcessing) return;
+            
+            isProcessing = true; 
+            aiBtn.disabled = true;
+            aiBtn.textContent = "发送中..."; 
+
+            try {
+                await addDoc(collection(db, `users/${currentUser.uid}/chats`), { role: 'user', text: input, date: selectedDate, timestamp: serverTimestamp() });
+                document.getElementById('aiInput').value = "";
+
+                const history = chatsCache.slice(-50).map(c => ({ role: c.role === 'coach' ? 'assistant' : 'user', content: c.text }));
+
+                const res = await fetch("https://api.deepseek.com/chat/completions", {
+                    method: "POST",
+                    headers: { "Content-Type": "application/json", "Authorization": `Bearer ${key}` },
+                    body: JSON.stringify({
+                        model: "deepseek-chat",
+                        messages: [
+                            { role: "system", content: "你是一个阳光幽默、记性极好的私人教练。你会参考对话历史来给予贴心反馈。如果用户提到做了清单外的运动，请夸奖并估算卡路里。JSON格式回复：{ 'coach_reply': '...', 'bonus_calories': 300 }。" },
+                            ...history,
+                            { role: "user", content: input }
+                        ],
+                        response_format: { type: "json_object" }
+                    })
+                });
+
+                const result = JSON.parse((await res.json()).choices[0].message.content);
+                await addDoc(collection(db, `users/${currentUser.uid}/chats`), { role: 'coach', text: result.coach_reply, date: selectedDate, timestamp: serverTimestamp() });
+                
+                if (result.bonus_calories > 0) {
+                    await setDoc(doc(db, `users/${currentUser.uid}/dailyStats`, selectedDate), { bonusCalories: increment(result.bonus_calories) }, { merge: true });
+                }
+            } catch (e) {
+                console.error("AI处理错误:", e);
+                alert("DeepSeek 频率限制或 Key 错误，请稍后再试。");
+            } finally {
+                setTimeout(() => {
+                    isProcessing = false;
+                    aiBtn.disabled = false;
+                    aiBtn.textContent = "发送";
+                }, 100); 
+            }
+        }
+        
+        async function triggerTaskCoach(title) {
+            const key = document.getElementById('apiKey').value.trim();
+            if (!key) return;
+            const shortHistory = chatsCache.slice(-5).map(c => ({ role: c.role === 'coach' ? 'assistant' : 'user', content: c.text }));
+            try {
+                const res = await fetch("https://api.deepseek.com/chat/completions", {
+                    method: "POST",
+                    headers: { "Content-Type": "application/json", "Authorization": `Bearer ${key}` },
+                    body: JSON.stringify({
+                        model: "deepseek-chat",
+                        messages: [
+                            { role: "system", content: "你是一个专业的私人教练。用户刚完成一个任务，请给出一条关于该动作的**专业建议、注意事项或细节**，帮助用户做得更标准、避免受伤。回复不超过 80 字。" },
+                            ...shortHistory,
+                            { role: "user", content: `针对我的任务：${title}，给我专业反馈。` }
+                        ]
+                    })
+                });
+                const text = (await res.json()).choices[0].message.content;
+                await addDoc(collection(db, `users/${currentUser.uid}/chats`), { role: 'coach', text: text, date: selectedDate, timestamp: serverTimestamp() });
+            } catch (e) {}
+        }
+
+        async function triggerGreeting() {
+            const key = document.getElementById('apiKey').value.trim();
+            if (!key) return;
+            try {
+                const res = await fetch("https://api.deepseek.com/chat/completions", {
+                    method: "POST",
+                    headers: { "Content-Type": "application/json", "Authorization": `Bearer ${key}` },
+                    body: JSON.stringify({
+                        model: "deepseek-chat",
+                        messages: [{ role: "system", content: "清晨问候。阳光励志，带一句名言。40字内。" }]
+                    })
+                });
+                const text = (await res.json()).choices[0].message.content;
+                await addDoc(collection(db, `users/${currentUser.uid}/chats`), { role: 'coach', text: text, date: selectedDate, timestamp: serverTimestamp() });
+            } catch (e) {}
+        }
+        
+        // --- 将函数挂载到 window 对象上 ---
+        window.processAI = processAI;
+        window.triggerTaskCoach = triggerTaskCoach;
+        window.triggerGreeting = triggerGreeting;
+
+
         onAuthStateChanged(auth, async (user) => {
             if (user) {
                 currentUser = user;
@@ -346,57 +442,7 @@
             }
         };
 
-        // --- 核心 AI 逻辑 2：深度聊天与额外运动估算（最终稳定修复） ---
-        async function processAI() {
-            const input = document.getElementById('aiInput').value.trim();
-            const key = document.getElementById('apiKey').value.trim();
-            const aiBtn = document.getElementById('aiBtn');
 
-            if (!input || !key || isProcessing) return;
-            
-            isProcessing = true; 
-            aiBtn.disabled = true;
-            aiBtn.textContent = "发送中..."; 
-
-            try {
-                await addDoc(collection(db, `users/${currentUser.uid}/chats`), { role: 'user', text: input, date: selectedDate, timestamp: serverTimestamp() });
-                document.getElementById('aiInput').value = "";
-
-                const history = chatsCache.slice(-50).map(c => ({ role: c.role === 'coach' ? 'assistant' : 'user', content: c.text }));
-
-                const res = await fetch("https://api.deepseek.com/chat/completions", {
-                    method: "POST",
-                    headers: { "Content-Type": "application/json", "Authorization": `Bearer ${key}` },
-                    body: JSON.stringify({
-                        model: "deepseek-chat",
-                        messages: [
-                            { role: "system", content: "你是一个阳光幽默、记性极好的私人教练。你会参考对话历史来给予贴心反馈。如果用户提到做了清单外的运动，请夸奖并估算卡路里。JSON格式回复：{ 'coach_reply': '...', 'bonus_calories': 300 }。" },
-                            ...history,
-                            { role: "user", content: input }
-                        ],
-                        response_format: { type: "json_object" }
-                    })
-                });
-
-                const result = JSON.parse((await res.json()).choices[0].message.content);
-                await addDoc(collection(db, `users/${currentUser.uid}/chats`), { role: 'coach', text: result.coach_reply, date: selectedDate, timestamp: serverTimestamp() });
-                
-                if (result.bonus_calories > 0) {
-                    await setDoc(doc(db, `users/${currentUser.uid}/dailyStats`, selectedDate), { bonusCalories: increment(result.bonus_calories) }, { merge: true });
-                }
-            } catch (e) {
-                console.error("AI处理错误:", e);
-                alert("DeepSeek 频率限制或 Key 错误，请稍后再试。");
-            } finally {
-                // 强制延迟释放，解决移动端按钮卡死问题
-                setTimeout(() => {
-                    isProcessing = false;
-                    aiBtn.disabled = false;
-                    aiBtn.textContent = "发送";
-                }, 100); 
-            }
-        }
-        
         async function triggerTaskCoach(title) {
             const key = document.getElementById('apiKey').value.trim();
             if (!key) return;
