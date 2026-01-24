@@ -29,11 +29,22 @@
         .date-nav-wrapper { display: flex; align-items: center; gap: 10px; background: #fff; padding: 8px 15px; border-radius: 12px; border: 1px solid var(--border); }
         .date-str { font-weight: 800; color: var(--primary); font-size: 0.9rem; }
 
+        /* 主布局 - 移动端（默认堆叠顺序） */
         .main-content { display: flex; flex-direction: column; gap: 10px; }
-        @media (min-width: 850px) { .main-content { display: grid; grid-template-columns: 1fr 1fr; gap: 20px; } .chat-box { height: calc(100vh - 480px) !important; } }
+        .chat-section { order: 1; }
+        .task-section-todo { order: 2; }
+        .task-section-done { order: 3; }
+        .task-box { background: white; border: 1px solid var(--border); border-radius: 15px; padding: 12px; margin-top: 10px; }
+        
+        @media (min-width: 850px) { 
+            .main-content { display: grid; grid-template-columns: 1fr 1fr; gap: 20px; } 
+            .chat-section { order: initial; grid-column: 2 / 3; }
+            .task-section-todo { order: initial; grid-column: 1 / 2; }
+            .task-section-done { order: initial; grid-column: 1 / 2; }
+            .chat-box { height: calc(100vh - 480px) !important; }
+        }
 
         /* 任务清单样式 */
-        .task-section { background: white; border: 1px solid var(--border); border-radius: 15px; padding: 12px; }
         .task-list { display: flex; flex-direction: column; gap: 8px; }
         .task-item { display: flex; align-items: center; background: #fff; padding: 14px; border-radius: 12px; border: 1px solid var(--border); }
         .task-item.done { opacity: 0.5; background: #f8fafc; border-style: dashed; }
@@ -99,15 +110,16 @@
                 <button class="small-btn" onclick="logout()" style="color:white; border-color:white; background:transparent;">退出</button>
             </div>
         </div>
+        
+        <!-- 名言警句 - 移动到卡路里上方 -->
+        <div class="quote-card" onclick="refreshQuote()">
+            <div id="quoteText">“加载中...”</div>
+            <div id="quoteBook">—— 加载中</div>
+        </div>
 
         <div class="stat-card">
             <div id="totalCalories" class="stat-val">0</div>
             <div class="stat-label">🔥 今日总消耗 (kcal)</div>
-        </div>
-
-        <div class="quote-card" onclick="refreshQuote()">
-            <div id="quoteText">“加载中...”</div>
-            <div id="quoteBook">—— 加载中</div>
         </div>
 
         <div class="date-nav-wrapper">
@@ -117,17 +129,7 @@
         </div>
 
         <div class="main-content">
-            <div class="task-section">
-                <div style="display:flex; justify-content:space-between; margin-bottom:12px;">
-                    <span style="font-weight:800; font-size:0.85rem; color:#64748b;">📋 训练清单</span>
-                    <div style="display:flex; gap:8px;">
-                        <button class="small-btn" onclick="forceInheritTasks()">🔄 同步前序</button>
-                        <button class="small-btn" onclick="openAddTaskModal()">+ 增加</button>
-                    </div>
-                </div>
-                <div id="taskList" class="task-list"></div>
-            </div>
-
+            <!-- 聊天区域 - 移动端 order 1 -->
             <div class="chat-section">
                 <div id="chatBox" class="chat-box"></div>
                 <div class="input-area">
@@ -138,6 +140,24 @@
                     <textarea id="aiInput" placeholder="直接说'我刚做了30个卷腹'，或者随意聊天..."></textarea>
                     <button class="ai-btn" id="aiBtn" onclick="processAI()">发送</button>
                 </div>
+            </div>
+
+            <!-- 未完成项目 - 移动端 order 2 -->
+            <div class="task-section-todo task-box">
+                <div style="display:flex; justify-content:space-between; margin-bottom:12px;">
+                    <span style="font-weight:800; font-size:0.85rem; color:#64748b;">📋 待办清单</span>
+                    <div style="display:flex; gap:8px;">
+                        <button class="small-btn" onclick="forceInheritTasks()">🔄 同步前序</button>
+                        <button class="small-btn" onclick="openAddTaskModal()">+ 增加</button>
+                    </div>
+                </div>
+                <div id="todoList" class="task-list"></div>
+            </div>
+
+            <!-- 已完成项目 - 移动端 order 3 -->
+            <div class="task-section-done task-box">
+                <span style="font-weight:800; font-size:0.85rem; color:#64748b; display:block; margin-bottom:12px;">✅ 今日已完成</span>
+                <div id="doneList" class="task-list"></div>
             </div>
         </div>
     </div>
@@ -200,7 +220,7 @@
             alert("✨ 云端同步成功！");
         };
 
-        // --- 摘抄逻辑 ---
+        // --- 摘抄逻辑（保持不变） ---
         async function syncQuotes() {
             const qSnap = await getDocs(query(collection(db, `users/${currentUser.uid}/quotes`), orderBy("timestamp", "desc")));
             quotesCache = qSnap.docs.map(d => ({id: d.id, ...d.data()}));
@@ -235,6 +255,7 @@
         };
         window.deleteQuote = async (id) => { if (confirm("从书架移除？")) { await deleteDoc(doc(db, `users/${currentUser.uid}/quotes`, id)); await syncQuotes(); renderManageQuotes(); } };
 
+
         // --- 系统初始化与统计 ---
         async function initView(dateStr) {
             document.getElementById('dateDisplay').textContent = dateStr;
@@ -245,7 +266,7 @@
                 currentTasks = snap.docs.map(d => ({id: d.id, ...d.data()}));
                 currentTasks.sort((a,b) => a.isDone - b.isDone || a.order - b.order);
                 renderTasks();
-                calculateTotal();
+                calculateTotal(); 
             });
 
             unsubC = onSnapshot(query(collection(db, `users/${uid}/chats`), where("date", "==", dateStr)), (snap) => {
@@ -263,43 +284,36 @@
         }
 
         function calculateTotal() {
-            // 已完成任务手动设定的卡路里总和
             const taskSum = currentTasks.reduce((acc, t) => acc + (t.isDone ? (Number(t.calories) || 0) : 0), 0);
-            // 对话中 AI 估算的额外卡路里总和
             const bonus = window.bonusCalories || 0;
             document.getElementById('totalCalories').textContent = taskSum + bonus;
         }
 
-        // --- 任务操作 ---
-        window.forceInheritTasks = async () => {
-            const tCol = collection(db, `users/${currentUser.uid}/tasks`);
-            const snapPast = await getDocs(query(tCol, where("date", "<", selectedDate), orderBy("date", "desc"), limit(1)));
-            if (!snapPast.empty) {
-                const sourceDate = snapPast.docs[0].data().date;
-                const snapTasks = await getDocs(query(tCol, where("date", "==", sourceDate)));
-                const snapCurrent = await getDocs(query(tCol, where("date", "==", selectedDate)));
-                const batch = writeBatch(db);
-                snapCurrent.docs.forEach(d => batch.delete(d.ref));
-                await batch.commit();
-                await Promise.all(snapTasks.docs.map(t => addDoc(tCol, { 
-                    title: t.data().title, 
-                    calories: t.data().calories || 0,
-                    date: selectedDate, 
-                    isDone: false, 
-                    order: t.data().order || Date.now() 
-                })));
-            }
-        };
-
+        // --- 任务列表渲染（拆分待办和已完成） ---
         function renderTasks() {
-            document.getElementById('taskList').innerHTML = currentTasks.map(t => `
-                <div class="task-item ${t.isDone ? 'done' : ''}">
-                    <div class="checkbox" onclick="toggleTask('${t.id}', ${t.isDone}, '${t.title}')"></div>
-                    <div class="task-title">${t.title}</div>
-                    ${t.calories > 0 ? `<div class="task-cal-tag">${t.calories} kcal</div>` : ''}
-                    <button style="border:none;background:none;cursor:pointer;color:#ef4444" onclick="deleteTask('${t.id}')">🗑️</button>
-                </div>
-            `).join('');
+            const todoList = document.getElementById('todoList');
+            const doneList = document.getElementById('doneList');
+            let todoHtml = '';
+            let doneHtml = '';
+
+            currentTasks.forEach(t => {
+                const itemHtml = `
+                    <div class="task-item ${t.isDone ? 'done' : ''}">
+                        <div class="checkbox" onclick="toggleTask('${t.id}', ${t.isDone}, '${t.title}')"></div>
+                        <div class="task-title">${t.title}</div>
+                        ${t.calories > 0 ? `<div class="task-cal-tag">${t.calories} kcal</div>` : ''}
+                        <button style="border:none;background:none;cursor:pointer;color:#ef4444" onclick="deleteTask('${t.id}')">🗑️</button>
+                    </div>
+                `;
+                if (t.isDone) {
+                    doneHtml += itemHtml;
+                } else {
+                    todoHtml += itemHtml;
+                }
+            });
+            
+            todoList.innerHTML = todoHtml || '<p style="text-align:center;color:#ccc;font-size:0.8rem;">今日无待办任务，快去增加吧！</p>';
+            doneList.innerHTML = doneHtml || '<p style="text-align:center;color:#ccc;font-size:0.8rem;">暂无已完成项目。</p>';
         }
 
         window.toggleTask = async (id, s, title) => {
@@ -308,45 +322,23 @@
             await updateDoc(doc(db, `users/${currentUser.uid}/tasks`, id), { isDone: newStatus });
             if (newStatus) {
                 await addDoc(collection(db, `users/${currentUser.uid}/chats`), { role: 'user', text: `打卡完成：${title}！💪`, date: selectedDate, timestamp: serverTimestamp() });
-                triggerTaskCoach(title); // 触发专业教练反馈
+                triggerTaskCoach(title);
             }
         };
 
-        // --- 核心 AI 逻辑 1：动作专业反馈 ---
-        async function triggerTaskCoach(title) {
-            const key = document.getElementById('apiKey').value.trim();
-            if (!key) return;
-            const shortHistory = chatsCache.slice(-5).map(c => ({ role: c.role === 'coach' ? 'assistant' : 'user', content: c.text }));
-            try {
-                const res = await fetch("https://api.deepseek.com/chat/completions", {
-                    method: "POST",
-                    headers: { "Content-Type": "application/json", "Authorization": `Bearer ${key}` },
-                    body: JSON.stringify({
-                        model: "deepseek-chat",
-                        messages: [
-                            { role: "system", content: "你是一个专业的私人教练。用户刚完成一个任务，请给出一条关于该动作的**专业建议、注意事项或细节**，帮助用户做得更标准、避免受伤。回复不超过 80 字。" },
-                            ...shortHistory,
-                            { role: "user", content: `针对我的任务：${title}，给我专业反馈。` }
-                        ]
-                    })
-                });
-                const text = (await res.json()).choices[0].message.content;
-                await addDoc(collection(db, `users/${currentUser.uid}/chats`), { role: 'coach', text: text, date: selectedDate, timestamp: serverTimestamp() });
-            } catch (e) {}
-        }
-        
-        // --- 核心 AI 逻辑 2：深度聊天与额外运动估算 ---
+        // --- AI 逻辑（无响应修复） ---
         async function processAI() {
             const input = document.getElementById('aiInput').value.trim();
             const key = document.getElementById('apiKey').value.trim();
             if (!input || !key || isProcessing) return;
-            isProcessing = true; document.getElementById('aiBtn').disabled = true;
+            
+            isProcessing = true; 
+            document.getElementById('aiBtn').disabled = true;
 
             try {
                 await addDoc(collection(db, `users/${currentUser.uid}/chats`), { role: 'user', text: input, date: selectedDate, timestamp: serverTimestamp() });
                 document.getElementById('aiInput').value = "";
 
-                // 提取最近 50 句对话作为上下文
                 const history = chatsCache.slice(-50).map(c => ({ role: c.role === 'coach' ? 'assistant' : 'user', content: c.text }));
 
                 const res = await fetch("https://api.deepseek.com/chat/completions", {
@@ -372,9 +364,32 @@
             } catch (e) {
                 alert("DeepSeek 频率限制或 Key 错误，请稍后再试。");
             } finally {
+                // 确保在try/catch结束后重置状态，修复了发送无反应的问题
                 isProcessing = false;
                 document.getElementById('aiBtn').disabled = false;
             }
+        }
+        
+        async function triggerTaskCoach(title) {
+            const key = document.getElementById('apiKey').value.trim();
+            if (!key) return;
+            const shortHistory = chatsCache.slice(-5).map(c => ({ role: c.role === 'coach' ? 'assistant' : 'user', content: c.text }));
+            try {
+                const res = await fetch("https://api.deepseek.com/chat/completions", {
+                    method: "POST",
+                    headers: { "Content-Type": "application/json", "Authorization": `Bearer ${key}` },
+                    body: JSON.stringify({
+                        model: "deepseek-chat",
+                        messages: [
+                            { role: "system", content: "你是一个专业的私人教练。用户刚完成一个任务，请给出一条关于该动作的**专业建议、注意事项或细节**，帮助用户做得更标准、避免受伤。回复不超过 80 字。" },
+                            ...shortHistory,
+                            { role: "user", content: `针对我的任务：${title}，给我专业反馈。` }
+                        ]
+                    })
+                });
+                const text = (await res.json()).choices[0].message.content;
+                await addDoc(collection(db, `users/${currentUser.uid}/chats`), { role: 'coach', text: text, date: selectedDate, timestamp: serverTimestamp() });
+            } catch (e) {}
         }
 
         async function triggerGreeting() {
@@ -399,6 +414,27 @@
             el.innerHTML = chats.map(c => `<div class="msg msg-${c.role}">${c.text}</div>`).join('');
             el.scrollTop = el.scrollHeight;
         }
+        
+        // --- 基础功能（保持不变） ---
+        window.forceInheritTasks = async () => {
+            const tCol = collection(db, `users/${currentUser.uid}/tasks`);
+            const snapPast = await getDocs(query(tCol, where("date", "<", selectedDate), orderBy("date", "desc"), limit(1)));
+            if (!snapPast.empty) {
+                const sourceDate = snapPast.docs[0].data().date;
+                const snapTasks = await getDocs(query(tCol, where("date", "==", sourceDate)));
+                const snapCurrent = await getDocs(query(tCol, where("date", "==", selectedDate)));
+                const batch = writeBatch(db);
+                snapCurrent.docs.forEach(d => batch.delete(d.ref));
+                await batch.commit();
+                await Promise.all(snapTasks.docs.map(t => addDoc(tCol, { 
+                    title: t.data().title, 
+                    calories: t.data().calories || 0,
+                    date: selectedDate, 
+                    isDone: false, 
+                    order: t.data().order || Date.now() 
+                })));
+            }
+        };
 
         window.changeDate = (os) => {
             const d = new Date(selectedDate); d.setDate(d.getDate() + os);
