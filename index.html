@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
-    <title>进化清单 Pro - 最终完美版</title>
+    <title>进化清单 Pro - 智能反馈版</title>
     <style>
         :root {
             --primary: #3b82f6; --bg: #fdfdfd; --border: #e2e8f0;
@@ -14,10 +14,8 @@
         body { font-family: "PingFang SC", "Microsoft YaHei", serif; background: var(--bg); margin: 0; padding: 8px; color: #1e293b; }
         .container { max-width: 1100px; margin: 0 auto; display: flex; flex-direction: column; gap: 10px; }
 
-        /* 顶部导航 */
         .header { background: linear-gradient(135deg, #2563eb, #3b82f6); color: white; padding: 12px 20px; border-radius: 15px; display: flex; justify-content: space-between; align-items: center; }
         
-        /* 每日摘抄卡片 */
         .quote-card { 
             background: var(--quote-bg); border: 1px dashed #bae6fd; border-radius: 15px; 
             padding: 15px; text-align: center; cursor: pointer; transition: 0.3s;
@@ -26,18 +24,15 @@
         #quoteText { font-size: 0.9rem; color: var(--quote-text); font-style: italic; font-weight: 500; margin-bottom: 5px; }
         #quoteBook { font-size: 0.7rem; color: #64748b; }
 
-        /* 日期导航 */
         .date-nav-wrapper { display: flex; align-items: center; gap: 10px; background: #fff; padding: 8px 15px; border-radius: 12px; border: 1px solid var(--border); }
         .date-str { font-weight: 800; color: var(--primary); font-size: 0.9rem; }
 
-        /* 主布局 */
         .main-content { display: flex; flex-direction: column; gap: 10px; }
         @media (min-width: 850px) {
             .main-content { display: grid; grid-template-columns: 1fr 1fr; gap: 20px; align-items: flex-start; }
             .chat-box { height: calc(100vh - 420px) !important; }
         }
 
-        /* 任务清单区域 */
         .task-section { background: white; border: 1px solid var(--border); border-radius: 15px; padding: 12px; }
         .list-header { display: flex; justify-content: space-between; align-items: center; margin-bottom: 10px; }
         .task-list { display: flex; flex-direction: column; gap: 8px; }
@@ -47,7 +42,6 @@
         .task-item.done .checkbox { background: #10b981; border-color: #10b981; }
         .task-title { flex: 1; font-weight: 600; font-size: 0.9rem; }
 
-        /* 聊天区域 */
         .chat-box { 
             background: #fff; border: 1px solid var(--border); border-radius: 15px; 
             height: 260px; overflow-y: auto; padding: 12px; display: flex; flex-direction: column; gap: 10px;
@@ -56,7 +50,6 @@
         .msg-user { align-self: flex-end; background: var(--user-msg); color: white; }
         .msg-coach { align-self: flex-start; background: var(--coach-bg); color: var(--coach-text); border: 1px solid #ffe4e6; }
 
-        /* 输入与弹窗 */
         .input-area { background: #fff; border: 1px solid var(--border); border-radius: 15px; padding: 12px; }
         textarea { width: 100%; height: 45px; border: 1px solid #f1f5f9; border-radius: 10px; padding: 8px; resize: none; font-size: 0.95rem; outline: none; background: #f8fafc; }
         .ai-btn { background: var(--primary); color: white; border: none; padding: 8px 20px; border-radius: 10px; font-weight: bold; cursor: pointer; float: right; margin-top: 8px; }
@@ -69,7 +62,6 @@
 </head>
 <body>
 
-    <!-- 登录屏 -->
     <div id="loginScreen" style="position:fixed;inset:0;background:#3b82f6;display:flex;justify-content:center;align-items:center;z-index:9000;">
         <div style="background:white;padding:35px;border-radius:25px;text-align:center;width:85%;max-width:300px;">
             <h1 style="font-size:3rem;margin:0">🧬</h1>
@@ -78,7 +70,6 @@
         </div>
     </div>
 
-    <!-- 录入任务弹窗 -->
     <div id="addTaskModal" class="modal-overlay" onclick="if(event.target===this) closeAddTaskModal()">
         <div class="modal-content">
             <h3 style="margin-top:0">🆕 新增任务</h3>
@@ -90,7 +81,6 @@
         </div>
     </div>
 
-    <!-- 书架/录入对话框 -->
     <div id="addQuoteModal" class="modal-overlay" onclick="if(event.target===this) closeAddQuoteModal()">
         <div class="modal-content">
             <h3 id="quoteModalTitle" style="margin-top:0">🖋️ 录入摘抄</h3>
@@ -127,7 +117,6 @@
         </div>
 
         <div class="main-content">
-            <!-- 列表区域 -->
             <div class="task-section">
                 <div class="list-header">
                     <span style="font-size:0.8rem;color:#64748b;font-weight:bold;">📋 训练任务</span>
@@ -139,7 +128,6 @@
                 <div id="taskList" class="task-list"></div>
             </div>
 
-            <!-- 聊天区域 -->
             <div class="chat-section">
                 <div style="display:flex; justify-content:space-between; align-items:center;">
                     <span style="font-size:0.8rem;color:#64748b;font-weight:bold;">💬 健身搭子</span>
@@ -175,14 +163,11 @@
         const provider = new GoogleAuthProvider();
 
         let currentUser = null;
-        
-        // --- 修复1：使用本地时间代替 UTC 时间 ---
         const today = new Date();
         const y = today.getFullYear();
         const m = String(today.getMonth() + 1).padStart(2, '0');
         const d = String(today.getDate()).padStart(2, '0');
         let selectedDate = `${y}-${m}-${d}`;
-        // -------------------------------------
 
         let unsubT = null, unsubC = null;
         let currentTasks = [];
@@ -218,7 +203,7 @@
             alert("✨ 云端同步成功！");
         };
 
-        // --- 摘抄系统代码 ---
+        // --- 摘抄系统 ---
         async function syncQuotes() {
             const qSnap = await getDocs(query(collection(db, `users/${currentUser.uid}/quotes`), orderBy("timestamp", "desc")));
             quotesCache = qSnap.docs.map(d => ({id: d.id, ...d.data()}));
@@ -258,65 +243,42 @@
         async function initView(dateStr) {
             document.getElementById('dateDisplay').textContent = dateStr;
             const uid = currentUser.uid;
-
-            // 1. 清理旧监听
             if (unsubT) unsubT(); 
             if (unsubC) unsubC();
-            
-            // 2. 关键：切换日期时立即清空聊天缓存
             chatsCache = []; 
             document.getElementById('chatBox').innerHTML = '<div style="text-align:center;padding-top:80px;color:#cbd5e1;font-size:0.8rem;">加载中...</div>';
-
             const tCol = collection(db, `users/${uid}/tasks`);
             const cCol = collection(db, `users/${uid}/chats`);
-
-            // 任务逻辑
             const snapToday = await getDocs(query(tCol, where("date", "==", dateStr)));
             if (snapToday.empty) {
                 await doInheritTasks(dateStr, false);
             }
-
-            // 监听任务
             unsubT = onSnapshot(query(tCol, where("date", "==", dateStr)), (snap) => {
                 currentTasks = snap.docs.map(d => ({id: d.id, ...d.data()}));
                 currentTasks.sort((a,b) => a.isDone - b.isDone || a.order - b.order);
                 renderTasks();
             });
-
-            // 监听聊天（只查询 date == dateStr）
             unsubC = onSnapshot(query(cCol, where("date", "==", dateStr)), (snap) => {
                 chatsCache = snap.docs.map(d => ({id: d.id, ...d.data()}));
-                // 前端按时间戳排序
-                chatsCache.sort((a, b) => {
-                    const tA = a.timestamp ? a.timestamp.seconds : 9999999999;
-                    const tB = b.timestamp ? b.timestamp.seconds : 9999999999;
-                    return tA - tB;
-                });
+                chatsCache.sort((a, b) => (a.timestamp?.seconds || 9999999999) - (b.timestamp?.seconds || 9999999999));
                 renderChats(chatsCache);
             });
-
             displayQuoteByDay();
         }
 
-        // 统一的继承逻辑函数
         async function doInheritTasks(targetDate, isForce) {
             const tCol = collection(db, `users/${currentUser.uid}/tasks`);
             const snapPast = await getDocs(query(tCol, where("date", "<", targetDate), orderBy("date", "desc"), limit(1)));
-            
             if (!snapPast.empty) {
                 const sourceDate = snapPast.docs[0].data().date;
                 const snapTasks = await getDocs(query(tCol, where("date", "==", sourceDate)));
-                
                 document.getElementById('loading').style.display = 'flex';
-                // 如果是强制同步，先删除目标日期的所有现有任务
                 if (isForce) {
                     const snapCurrent = await getDocs(query(tCol, where("date", "==", targetDate)));
                     const batch = writeBatch(db);
                     snapCurrent.docs.forEach(d => batch.delete(d.ref));
                     await batch.commit();
                 }
-
-                // 克隆任务
                 await Promise.all(snapTasks.docs.map(t => addDoc(tCol, {
                     title: t.data().title,
                     date: targetDate,
@@ -327,7 +289,6 @@
             }
         }
 
-        // 暴露给按钮的强制同步函数
         window.forceInheritTasks = async () => {
             if (confirm("确定要同步前一天的最新计划吗？\n注意：这会重置今天的任务进度！")) {
                 await doInheritTasks(selectedDate, true);
@@ -342,6 +303,38 @@
                     <button style="color:#fda4af;border:none;background:none;font-size:0.65rem;cursor:pointer;" onclick="deleteTask('${t.id}')">🗑️</button>
                 </div>
             `).join('');
+        }
+
+        // --- 重点：任务点击反馈逻辑 ---
+        window.toggleTask = async (id, s) => {
+            const newStatus = !s;
+            await updateDoc(doc(db, `users/${currentUser.uid}/tasks`, id), { isDone: newStatus });
+            // 如果是刚刚勾选为完成，触发 AI 简短反馈
+            if (newStatus) {
+                const task = currentTasks.find(t => t.id === id);
+                if (task) triggerQuickFeedback(task.title);
+            }
+        };
+
+        async function triggerQuickFeedback(taskTitle) {
+            const key = document.getElementById('apiKey').value.trim();
+            if (!key) return;
+            const chatCol = collection(db, `users/${currentUser.uid}/chats`);
+            try {
+                const res = await fetch("https://api.deepseek.com/chat/completions", {
+                    method: "POST",
+                    headers: { "Content-Type": "application/json", "Authorization": `Bearer ${key}` },
+                    body: JSON.stringify({
+                        model: "deepseek-chat",
+                        messages: [
+                            { role: "system", content: "你是一个阳光的健身教练。用户刚完成了一项任务，请用一句话（15字以内）给出幽默、阳光的夸奖。直接返回纯文本。" },
+                            { role: "user", content: `我刚刚完成了：${taskTitle}` }
+                        ]
+                    })
+                });
+                const aiText = (await res.json()).choices[0].message.content;
+                await addDoc(chatCol, { role: 'coach', text: aiText.trim(), date: selectedDate, timestamp: serverTimestamp() });
+            } catch (e) { console.error("Feedback error:", e); }
         }
 
         function renderChats(chats) {
@@ -368,7 +361,6 @@
             }
         };
 
-        window.toggleTask = async (id, s) => updateDoc(doc(db, `users/${currentUser.uid}/tasks`, id), { isDone: !s });
         window.deleteTask = async (id) => { if(confirm("彻底删除？")) await deleteDoc(doc(db, `users/${currentUser.uid}/tasks`, id)); };
         
         window.clearChats = async () => {
@@ -379,22 +371,14 @@
             }
         };
 
-        // --- 修复2：processAI 增加强力保险，防止 undefined 报错 ---
         window.processAI = async () => {
             const input = document.getElementById('aiInput').value.trim();
             const key = document.getElementById('apiKey').value.trim();
-            
-            if (!input) return;
-            if (!key) { alert("⚠️ 请先填写 API Key 并点击‘存云端’"); return; }
-
-            const btn = document.getElementById('aiBtn'); 
-            btn.disabled = true;
+            if (!input || !key) return;
+            const btn = document.getElementById('aiBtn'); btn.disabled = true;
             btn.textContent = "AI 思考中..."; 
-            
             const chatCol = collection(db, `users/${currentUser.uid}/chats`);
-
             try {
-                // 1. 处理特殊指令（摘抄）
                 if (input.startsWith("摘抄：") || input.startsWith("摘抄:")) {
                     const text = input.replace(/摘抄：|摘抄:/, "").trim();
                     await addDoc(collection(db, `users/${currentUser.uid}/quotes`), { text, source: "对话录入", timestamp: serverTimestamp() });
@@ -404,52 +388,26 @@
                     document.getElementById('aiInput').value = "";
                     return;
                 }
-
-                // 2. 用户消息上墙
                 await addDoc(chatCol, { role: 'user', text: input, date: selectedDate, timestamp: serverTimestamp() });
                 document.getElementById('aiInput').value = ""; 
-
-                // 3. 准备历史上下文
                 const history = chatsCache.slice(-5).map(c => ({ role: c.role === 'coach' ? 'assistant' : 'user', content: c.text }));
-
-                // 4. 请求 AI
                 const res = await fetch("https://api.deepseek.com/chat/completions", {
                     method: "POST",
                     headers: { "Content-Type": "application/json", "Authorization": `Bearer ${key}` },
                     body: JSON.stringify({
                         model: "deepseek-chat",
                         messages: [
-                            { role: "system", content: "你是一个阳光幽默的健身搭子。多发表情包💪。请务必返回 JSON 格式，包含字段 'coach_reply' 作为回复内容。如果涉及任务增删，请包含 'changes' 数组。" },
+                            { role: "system", content: "你是一个阳光幽默的健身搭子。多发表情包💪。请务必返回 JSON 格式，包含字段 'coach_reply'。涉及任务增删请包含 'changes' 数组。" },
                             ...history,
                             { role: "user", content: `(任务状态：[${currentTasks.map(t=>t.title).join(',')}])。用户说：${input}` }
                         ],
                         response_format: { type: "json_object" }
                     })
                 });
-
-                if (!res.ok) {
-                    const errText = await res.text();
-                    throw new Error(`API 请求失败: ${res.status} - ${errText}`);
-                }
-
-                const jsonStr = (await res.json()).choices[0].message.content;
-                let result;
-                
-                // 尝试解析 JSON，如果解析失败或字段缺失，进行兜底处理
-                try {
-                    result = JSON.parse(jsonStr);
-                } catch (e) {
-                    console.warn("JSON 解析失败，回退到纯文本模式");
-                    result = { coach_reply: jsonStr };
-                }
-
-                // 【关键修复点】确保 text 永远不是 undefined
-                const finalReply = result.coach_reply || result.message || result.msg || JSON.stringify(result) || "（AI 点了点头，但什么都没说）";
-
-                // 5. AI 回复上墙
+                if (!res.ok) throw new Error("API 请求失败");
+                const result = JSON.parse((await res.json()).choices[0].message.content);
+                const finalReply = result.coach_reply || JSON.stringify(result);
                 await addDoc(chatCol, { role: 'coach', text: finalReply, date: selectedDate, timestamp: serverTimestamp() });
-                
-                // 6. 处理任务变动
                 if (result.changes && Array.isArray(result.changes)) {
                     const taskCol = collection(db, `users/${currentUser.uid}/tasks`);
                     for (const c of result.changes) {
@@ -458,10 +416,9 @@
                         }
                     }
                 }
-                
             } catch (e) { 
-                console.error("过程出错:", e); 
-                alert("❌ 出错了：\n" + e.message); 
+                console.error(e); 
+                alert("❌ 出错了：" + e.message); 
             } finally { 
                 btn.disabled = false; 
                 btn.textContent = "发送";
