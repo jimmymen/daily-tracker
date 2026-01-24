@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
-    <title>进化清单 Pro - 纯净统计版</title>
+    <title>进化清单 Pro - 智能教练版</title>
     <style>
         :root {
             --primary: #3b82f6; --bg: #fdfdfd; --border: #e2e8f0;
@@ -16,38 +16,35 @@
 
         .header { background: linear-gradient(135deg, #2563eb, #3b82f6); color: white; padding: 12px 20px; border-radius: 15px; display: flex; justify-content: space-between; align-items: center; }
         
-        /* 卡路里面板 */
+        /* 卡路里大屏 */
         .stats-bar { display: flex; gap: 10px; margin-bottom: 5px; }
-        .stat-card { background: white; border: 1px solid var(--border); padding: 10px 15px; border-radius: 12px; flex: 1; text-align: center; }
-        .stat-val { font-size: 1.2rem; font-weight: 800; color: #f59e0b; }
-        .stat-label { font-size: 0.7rem; color: #64748b; }
+        .stat-card { background: white; border: 1px solid var(--border); padding: 15px; border-radius: 16px; flex: 1; text-align: center; box-shadow: 0 2px 4px rgba(0,0,0,0.02); }
+        .stat-val { font-size: 1.8rem; font-weight: 900; color: #f59e0b; line-height: 1; }
+        .stat-label { font-size: 0.75rem; color: #64748b; margin-top: 5px; font-weight: bold; }
 
         .date-nav-wrapper { display: flex; align-items: center; gap: 10px; background: #fff; padding: 8px 15px; border-radius: 12px; border: 1px solid var(--border); }
         .date-str { font-weight: 800; color: var(--primary); font-size: 0.9rem; }
 
         .main-content { display: flex; flex-direction: column; gap: 10px; }
-        @media (min-width: 850px) { .main-content { display: grid; grid-template-columns: 1fr 1fr; gap: 20px; } .chat-box { height: calc(100vh - 420px) !important; } }
+        @media (min-width: 850px) { .main-content { display: grid; grid-template-columns: 1fr 1fr; gap: 20px; } .chat-box { height: calc(100vh - 380px) !important; } }
 
         .task-section { background: white; border: 1px solid var(--border); border-radius: 15px; padding: 12px; }
         .task-list { display: flex; flex-direction: column; gap: 8px; }
-        .task-item { display: flex; align-items: center; background: #fff; padding: 12px; border-radius: 12px; border: 1px solid var(--border); }
-        .task-item.done { opacity: 0.6; background: #f8fafc; border-style: dashed; }
-        .checkbox { width: 22px; height: 22px; border-radius: 50%; border: 2px solid var(--border); margin-right: 12px; cursor: pointer; flex-shrink: 0; }
+        .task-item { display: flex; align-items: center; background: #fff; padding: 14px; border-radius: 12px; border: 1px solid var(--border); transition: 0.2s; }
+        .task-item.done { opacity: 0.5; background: #f8fafc; border-style: dashed; }
+        .checkbox { width: 24px; height: 24px; border-radius: 50%; border: 2px solid var(--border); margin-right: 12px; cursor: pointer; flex-shrink: 0; }
         .task-item.done .checkbox { background: #10b981; border-color: #10b981; }
-        .task-title { flex: 1; font-weight: 600; font-size: 0.9rem; }
-        .task-cal { font-size: 0.7rem; color: #f59e0b; font-weight: bold; margin-right: 10px; }
+        .task-title { flex: 1; font-weight: 600; font-size: 0.95rem; }
 
-        .chat-box { background: #fff; border: 1px solid var(--border); border-radius: 15px; height: 280px; overflow-y: auto; padding: 12px; display: flex; flex-direction: column; gap: 10px; }
-        .msg { max-width: 85%; padding: 10px 14px; border-radius: 14px; font-size: 0.9rem; line-height: 1.4; }
-        .msg-user { align-self: flex-end; background: var(--user-msg); color: white; }
-        .msg-coach { align-self: flex-start; background: var(--coach-bg); color: var(--coach-text); border: 1px solid #ffe4e6; }
+        .chat-box { background: #fff; border: 1px solid var(--border); border-radius: 15px; height: 320px; overflow-y: auto; padding: 12px; display: flex; flex-direction: column; gap: 10px; }
+        .msg { max-width: 85%; padding: 10px 14px; border-radius: 14px; font-size: 0.9rem; line-height: 1.5; box-shadow: 0 1px 2px rgba(0,0,0,0.05); }
+        .msg-user { align-self: flex-end; background: var(--user-msg); color: white; border-bottom-right-radius: 2px; }
+        .msg-coach { align-self: flex-start; background: var(--coach-bg); color: var(--coach-text); border: 1px solid #ffe4e6; border-bottom-left-radius: 2px; }
 
         .input-area { background: #fff; border: 1px solid var(--border); border-radius: 15px; padding: 12px; }
-        textarea { width: 100%; height: 45px; border: 1px solid #f1f5f9; border-radius: 10px; padding: 8px; resize: none; font-size: 0.95rem; outline: none; background: #f8fafc; }
-        .ai-btn { background: var(--primary); color: white; border: none; padding: 8px 20px; border-radius: 10px; font-weight: bold; cursor: pointer; float: right; margin-top: 8px; }
-        .modal-overlay { position: fixed; inset: 0; background: rgba(0,0,0,0.3); display: none; justify-content: center; align-items: center; z-index: 5000; }
-        .modal-content { background: white; width: 90%; max-width: 400px; padding: 20px; border-radius: 20px; }
-        .small-btn { font-size: 0.65rem; padding: 4px 8px; border-radius: 8px; border: 1px solid var(--border); background: white; cursor: pointer; color: #64748b; }
+        textarea { width: 100%; height: 50px; border: 1px solid #f1f5f9; border-radius: 10px; padding: 10px; resize: none; font-size: 0.95rem; outline: none; background: #f8fafc; }
+        .ai-btn { background: var(--primary); color: white; border: none; padding: 8px 24px; border-radius: 10px; font-weight: bold; cursor: pointer; float: right; margin-top: 8px; }
+        .small-btn { font-size: 0.7rem; padding: 5px 10px; border-radius: 8px; border: 1px solid var(--border); background: white; cursor: pointer; color: #64748b; }
     </style>
 </head>
 <body>
@@ -60,20 +57,9 @@
         </div>
     </div>
 
-    <div id="addTaskModal" class="modal-overlay" onclick="if(event.target===this) closeAddTaskModal()">
-        <div class="modal-content">
-            <h3>🆕 手动录入任务</h3>
-            <input type="text" id="manualTaskInput" style="width:100%;padding:12px;border:1px solid var(--border);border-radius:10px;margin-bottom:15px;" placeholder="任务名称" onkeyup="if(event.key==='Enter') saveTaskManual()">
-            <div style="display:flex;justify-content:flex-end;gap:8px;">
-                <button class="small-btn" onclick="closeAddTaskModal()">取消</button>
-                <button class="ai-btn" style="margin:0" onclick="saveTaskManual()">确认添加</button>
-            </div>
-        </div>
-    </div>
-
     <div id="app" class="container" style="display: none;">
         <div class="header">
-            <span id="userName" style="font-size: 0.9rem; font-weight: bold;">你好</span>
+            <span id="userName" style="font-weight: bold;">加载中...</span>
             <button class="small-btn" onclick="logout()" style="color:white; border-color:white; background:transparent;">退出</button>
         </div>
 
@@ -81,10 +67,6 @@
             <div class="stat-card">
                 <div id="totalCalories" class="stat-val">0</div>
                 <div class="stat-label">今日总消耗 (kcal)</div>
-            </div>
-            <div class="stat-card">
-                <div id="bonusCaloriesDisp" class="stat-val">0</div>
-                <div class="stat-label">对话额外消耗</div>
             </div>
         </div>
 
@@ -96,9 +78,9 @@
 
         <div class="main-content">
             <div class="task-section">
-                <div style="display:flex; justify-content:space-between; margin-bottom:10px;">
-                    <span style="font-weight:bold; font-size:0.8rem;">📋 训练清单</span>
-                    <button class="small-btn" onclick="openAddTaskModal()">+ 增加</button>
+                <div style="display:flex; justify-content:space-between; margin-bottom:12px; align-items:center;">
+                    <span style="font-weight:800; font-size:0.85rem; color:#64748b;">📋 训练清单</span>
+                    <button class="small-btn" onclick="openAddTaskModal()">+ 增加项目</button>
                 </div>
                 <div id="taskList" class="task-list"></div>
             </div>
@@ -107,19 +89,31 @@
                 <div id="chatBox" class="chat-box"></div>
                 <div class="input-area">
                     <div style="display:flex; gap:8px; margin-bottom:8px;">
-                        <input type="password" id="apiKey" placeholder="在此粘贴 Key" style="flex:1; padding:5px 10px; border:1px solid var(--border); border-radius:8px; font-size:0.7rem;">
+                        <input type="password" id="apiKey" placeholder="DeepSeek API Key" style="flex:1; padding:5px 10px; border:1px solid var(--border); border-radius:8px; font-size:0.7rem;">
                         <button class="small-btn" onclick="saveKeyToFirebase()">存云端</button>
                     </div>
-                    <textarea id="aiInput" placeholder="聊聊感受，或说'我刚跑了5公里'..."></textarea>
+                    <textarea id="aiInput" placeholder="直接输入：俯卧撑20个，或跟我聊天..."></textarea>
                     <button class="ai-btn" id="aiBtn" onclick="processAI()">发送</button>
                 </div>
             </div>
         </div>
     </div>
 
+    <!-- 弹窗组件 -->
+    <div id="addTaskModal" class="modal-overlay" style="position:fixed;inset:0;background:rgba(0,0,0,0.3);display:none;justify-content:center;align-items:center;z-index:5000;" onclick="if(event.target===this) closeAddTaskModal()">
+        <div class="modal-content" style="background:white;padding:20px;border-radius:20px;width:90%;max-width:350px;">
+            <h3 style="margin:0 0 15px 0">🆕 新增训练项目</h3>
+            <input type="text" id="manualTaskInput" style="width:100%;padding:12px;border:1px solid var(--border);border-radius:10px;margin-bottom:15px;" placeholder="例如：20个标准俯卧撑" onkeyup="if(event.key==='Enter') saveTaskManual()">
+            <div style="display:flex;justify-content:flex-end;gap:8px;">
+                <button class="small-btn" onclick="closeAddTaskModal()">取消</button>
+                <button class="ai-btn" style="margin:0" onclick="saveTaskManual()">确认添加</button>
+            </div>
+        </div>
+    </div>
+
     <script type="module">
         import { initializeApp } from 'https://www.gstatic.com/firebasejs/10.7.1/firebase-app.js';
-        import { getFirestore, collection, addDoc, query, where, getDocs, orderBy, limit, updateDoc, doc, deleteDoc, onSnapshot, serverTimestamp, writeBatch, setDoc, getDoc, increment } from 'https://www.gstatic.com/firebasejs/10.7.1/firebase-firestore.js';
+        import { getFirestore, collection, addDoc, query, where, getDocs, orderBy, limit, updateDoc, doc, deleteDoc, onSnapshot, serverTimestamp, setDoc, getDoc, increment } from 'https://www.gstatic.com/firebasejs/10.7.1/firebase-firestore.js';
         import { getAuth, signInWithPopup, GoogleAuthProvider, onAuthStateChanged, signOut } from 'https://www.gstatic.com/firebasejs/10.7.1/firebase-auth.js';
 
         const firebaseConfig = {
@@ -142,14 +136,13 @@
         let selectedDate = `${now.getFullYear()}-${String(now.getMonth()+1).padStart(2,'0')}-${String(now.getDate()).padStart(2,'0')}`;
         
         let unsubT = null, unsubC = null, unsubS = null;
-        let currentTasks = [];
-        let bonusCalories = 0;
 
         onAuthStateChanged(auth, async (user) => {
             if (user) {
                 currentUser = user;
                 document.getElementById('loginScreen').style.display = 'none';
                 document.getElementById('app').style.display = 'flex';
+                document.getElementById('userName').textContent = `你好，${user.displayName.split(' ')[0]}`;
                 await loadKey();
                 initView(selectedDate);
             } else {
@@ -169,7 +162,7 @@
         window.saveKeyToFirebase = async () => {
             const key = document.getElementById('apiKey').value.trim();
             await setDoc(doc(db, `users/${currentUser.uid}/settings`, "deepseek"), { apiKey: key, updatedAt: serverTimestamp() });
-            alert("✨ 存好啦！");
+            alert("✨ Key 已存入云端！");
         };
 
         async function initView(dateStr) {
@@ -177,125 +170,142 @@
             const uid = currentUser.uid;
             if (unsubT) unsubT(); if (unsubC) unsubC(); if (unsubS) unsubS();
 
-            // 监听任务
             unsubT = onSnapshot(query(collection(db, `users/${uid}/tasks`), where("date", "==", dateStr)), (snap) => {
-                currentTasks = snap.docs.map(d => ({id: d.id, ...d.data()}));
-                currentTasks.sort((a,b) => a.isDone - b.isDone || a.order - b.order);
-                renderTasks();
-                calculateTotal();
+                const tasks = snap.docs.map(d => ({id: d.id, ...d.data()}));
+                tasks.sort((a,b) => a.isDone - b.isDone || a.order - b.order);
+                renderTasks(tasks);
             });
 
-            // 监听聊天
             unsubC = onSnapshot(query(collection(db, `users/${uid}/chats`), where("date", "==", dateStr)), (snap) => {
                 const chats = snap.docs.map(d => ({id: d.id, ...d.data()}));
                 chats.sort((a, b) => (a.timestamp?.seconds || 0) - (b.timestamp?.seconds || 0));
                 renderChats(chats);
+                // 检查是否需要触发早晨问候
+                if (chats.length === 0 && dateStr === selectedDate) {
+                    triggerGreeting();
+                }
             });
 
-            // 监听对话产生的额外卡路里
             unsubS = onSnapshot(doc(db, `users/${uid}/dailyStats`, dateStr), (doc) => {
-                bonusCalories = doc.exists() ? (doc.data().bonusCalories || 0) : 0;
-                document.getElementById('bonusCaloriesDisp').textContent = bonusCalories;
-                calculateTotal();
+                document.getElementById('totalCalories').textContent = doc.exists() ? (doc.data().totalCalories || 0) : 0;
             });
         }
 
-        function renderTasks() {
-            document.getElementById('taskList').innerHTML = currentTasks.map(t => `
+        function renderTasks(tasks) {
+            document.getElementById('taskList').innerHTML = tasks.map(t => `
                 <div class="task-item ${t.isDone ? 'done' : ''}">
-                    <div class="checkbox" onclick="toggleTask('${t.id}', ${t.isDone})"></div>
+                    <div class="checkbox" onclick="toggleTask('${t.id}', ${t.isDone}, '${t.title}')"></div>
                     <div class="task-title">${t.title}</div>
-                    <div class="task-cal">${t.calories || 0} kcal</div>
-                    <button style="border:none;background:none;cursor:pointer;color:#ef4444" onclick="deleteTask('${t.id}')">🗑️</button>
+                    <button style="border:none;background:none;cursor:pointer;color:#cbd5e1" onclick="deleteTask('${t.id}')">🗑️</button>
                 </div>
             `).join('');
         }
 
-        function calculateTotal() {
-            let taskSum = currentTasks.reduce((acc, t) => acc + (t.isDone ? (t.calories || 0) : 0), 0);
-            document.getElementById('totalCalories').textContent = taskSum + bonusCalories;
-        }
-
-        // --- 逻辑：勾选任务并对话 ---
-        window.toggleTask = async (id, s) => {
+        // --- 逻辑 1：勾选任务触发评价与卡路里 ---
+        window.toggleTask = async (id, s, title) => {
             if (isProcessing) return;
             const newStatus = !s;
-            const task = currentTasks.find(t => t.id === id);
             await updateDoc(doc(db, `users/${currentUser.uid}/tasks`, id), { isDone: newStatus });
             
             if (newStatus) {
-                // 以用户名义打卡
-                const chatCol = collection(db, `users/${currentUser.uid}/chats`);
-                await addDoc(chatCol, { role: 'user', text: `打卡完成：${task.title}！💪`, date: selectedDate, timestamp: serverTimestamp() });
-                triggerTaskFeedback(task);
+                // 模拟用户发言
+                await addDoc(collection(db, `users/${currentUser.uid}/chats`), { 
+                    role: 'user', 
+                    text: `打卡完成：${title}！💪`, 
+                    date: selectedDate, 
+                    timestamp: serverTimestamp() 
+                });
+                evaluateActivity(title);
             }
         };
 
-        async function triggerTaskFeedback(task) {
-            const key = document.getElementById('apiKey').value.trim();
-            if (!key) return;
-            isProcessing = true;
-            try {
-                const res = await fetch("https://api.deepseek.com/chat/completions", {
-                    method: "POST",
-                    headers: { "Content-Type": "application/json", "Authorization": `Bearer ${key}` },
-                    body: JSON.stringify({
-                        model: "deepseek-chat",
-                        messages: [
-                            { role: "system", content: "你是健身搭子。用户刚完成一个任务。请：1.简短阳光夸奖；2.估算该任务卡路里。JSON：{ 'coach_reply': '...', 'calories': 100 }" },
-                            { role: "user", content: `我完成了：${task.title}` }
-                        ],
-                        response_format: { type: "json_object" }
-                    })
-                });
-                const result = JSON.parse((await res.json()).choices[0].message.content);
-                await addDoc(collection(db, `users/${currentUser.uid}/chats`), { role: 'coach', text: result.coach_reply, date: selectedDate, timestamp: serverTimestamp() });
-                await updateDoc(doc(db, `users/${currentUser.uid}/tasks`, task.id), { calories: result.calories || 0 });
-            } catch (e) { console.error(e); } finally { isProcessing = false; }
-        }
-
-        // --- 逻辑：聊天识别运动 ---
+        // --- 逻辑 2：普通对话评估卡路里 ---
         window.processAI = async () => {
             const input = document.getElementById('aiInput').value.trim();
             const key = document.getElementById('apiKey').value.trim();
             if (!input || !key || isProcessing) return;
             
             isProcessing = true;
-            const btn = document.getElementById('aiBtn');
-            btn.disabled = true;
+            document.getElementById('aiBtn').disabled = true;
 
             try {
-                await addDoc(collection(db, `users/${currentUser.uid}/chats`), { role: 'user', text: input, date: selectedDate, timestamp: serverTimestamp() });
+                await addDoc(collection(db, `users/${currentUser.uid}/chats`), { 
+                    role: 'user', 
+                    text: input, 
+                    date: selectedDate, 
+                    timestamp: serverTimestamp() 
+                });
                 document.getElementById('aiInput').value = "";
+                evaluateActivity(input);
+            } catch (e) { 
+                console.error(e);
+            } finally { 
+                isProcessing = false; 
+                document.getElementById('aiBtn').disabled = false;
+            }
+        };
 
+        // --- 核心估算函数 ---
+        async function evaluateActivity(text) {
+            const key = document.getElementById('apiKey').value.trim();
+            if (!key) return;
+            try {
                 const res = await fetch("https://api.deepseek.com/chat/completions", {
                     method: "POST",
                     headers: { "Content-Type": "application/json", "Authorization": `Bearer ${key}` },
                     body: JSON.stringify({
                         model: "deepseek-chat",
                         messages: [
-                            { role: "system", content: "你是健身搭子。如果用户提到做了某种运动，请：1.夸奖；2.估算卡路里。注意：不要建议添加任务。JSON：{ 'coach_reply': '...', 'bonus_calories': 300 }" },
-                            { role: "user", content: input }
+                            { role: "system", content: "你是一个专业的健身搭子。如果用户提到运动或完成了任务，请：1.阳光幽默地评价；2.估算消耗的卡路里。JSON格式回复：{ 'coach_reply': '...', 'calories': 100 }。如果用户只是在普通聊天，calories 请返回 0。" },
+                            { role: "user", content: text }
                         ],
                         response_format: { type: "json_object" }
                     })
                 });
-
                 const result = JSON.parse((await res.json()).choices[0].message.content);
-                await addDoc(collection(db, `users/${currentUser.uid}/chats`), { role: 'coach', text: result.coach_reply, date: selectedDate, timestamp: serverTimestamp() });
                 
-                // 如果识别到卡路里，存入 dailyStats (额外消耗轨道)
-                if (result.bonus_calories) {
+                // 存入对话
+                await addDoc(collection(db, `users/${currentUser.uid}/chats`), { 
+                    role: 'coach', 
+                    text: result.coach_reply, 
+                    date: selectedDate, 
+                    timestamp: serverTimestamp() 
+                });
+
+                // 累加卡路里到统计表
+                if (result.calories > 0) {
                     const statsRef = doc(db, `users/${currentUser.uid}/dailyStats`, selectedDate);
-                    await setDoc(statsRef, { bonusCalories: increment(result.bonus_calories) }, { merge: true });
+                    await setDoc(statsRef, { totalCalories: increment(result.calories) }, { merge: true });
                 }
-            } catch (e) { 
-                alert("DeepSeek 频率限制，请稍等一分钟~");
-            } finally { 
-                isProcessing = false; 
-                btn.disabled = false;
+            } catch (e) {
+                console.error(e);
             }
-        };
+        }
+
+        // --- 每日首次问候 ---
+        async function triggerGreeting() {
+            const key = document.getElementById('apiKey').value.trim();
+            if (!key) return;
+            try {
+                const res = await fetch("https://api.deepseek.com/chat/completions", {
+                    method: "POST",
+                    headers: { "Content-Type": "application/json", "Authorization": `Bearer ${key}` },
+                    body: JSON.stringify({
+                        model: "deepseek-chat",
+                        messages: [
+                            { role: "system", content: "现在是清晨，用户第一次打开进化清单。请给出一句阳光、励志、充满能量的问候语，包含一句名言或励志口号。字数在40字以内。" }
+                        ]
+                    })
+                });
+                const text = (await res.json()).choices[0].message.content;
+                await addDoc(collection(db, `users/${currentUser.uid}/chats`), { 
+                    role: 'coach', 
+                    text: text, 
+                    date: selectedDate, 
+                    timestamp: serverTimestamp() 
+                });
+            } catch (e) { console.error(e); }
+        }
 
         function renderChats(chats) {
             const el = document.getElementById('chatBox');
@@ -303,7 +313,7 @@
             el.scrollTop = el.scrollHeight;
         }
 
-        window.jumpToDate = (date) => { if(date) { selectedDate = date; initView(date); } };
+        // 基础功能函数
         window.changeDate = (os) => {
             const d = new Date(selectedDate); d.setDate(d.getDate() + os);
             selectedDate = `${d.getFullYear()}-${String(d.getMonth()+1).padStart(2,'0')}-${String(d.getDate()).padStart(2,'0')}`;
@@ -314,20 +324,12 @@
         window.saveTaskManual = async () => {
             const title = document.getElementById('manualTaskInput').value.trim();
             if (title) {
-                await addDoc(collection(db, `users/${currentUser.uid}/tasks`), { title, date: selectedDate, isDone: false, calories: 0, order: Date.now() });
+                await addDoc(collection(db, `users/${currentUser.uid}/tasks`), { title, date: selectedDate, isDone: false, order: Date.now() });
                 closeAddTaskModal();
                 document.getElementById('manualTaskInput').value = "";
             }
         };
-        window.deleteTask = async (id) => { if(confirm("删除此任务？")) await deleteDoc(doc(db, `users/${currentUser.uid}/tasks`, id)); };
-        window.clearChats = async () => { 
-            if(confirm("清空今日对话？")) {
-                const batch = writeBatch(db);
-                const q = await getDocs(query(collection(db, `users/${currentUser.uid}/chats`), where("date", "==", selectedDate)));
-                q.forEach(d => batch.delete(d.ref));
-                await batch.commit();
-            }
-        };
+        window.deleteTask = async (id) => { if(confirm("删除此项目？")) await deleteDoc(doc(db, `users/${currentUser.uid}/tasks`, id)); };
     </script>
 </body>
 </html>
