@@ -346,7 +346,7 @@
             }
         };
 
-        // --- 核心 AI 逻辑（无响应修复） ---
+        // --- 核心 AI 逻辑 2：深度聊天与额外运动估算（重点修复发送卡死问题） ---
         async function processAI() {
             const input = document.getElementById('aiInput').value.trim();
             const key = document.getElementById('apiKey').value.trim();
@@ -385,11 +385,15 @@
                     await setDoc(doc(db, `users/${currentUser.uid}/dailyStats`, selectedDate), { bonusCalories: increment(result.bonus_calories) }, { merge: true });
                 }
             } catch (e) {
+                console.error("AI处理错误:", e);
                 alert("DeepSeek 频率限制或 Key 错误，请稍后再试。");
             } finally {
-                isProcessing = false;
-                aiBtn.disabled = false;
-                aiBtn.textContent = "发送";
+                // 强制延迟释放，解决移动端按钮卡死问题
+                setTimeout(() => {
+                    isProcessing = false;
+                    aiBtn.disabled = false;
+                    aiBtn.textContent = "发送";
+                }, 100); 
             }
         }
         
