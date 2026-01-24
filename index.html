@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
-    <title>进化清单 Pro - 完美同步版</title>
+    <title>进化清单 Pro - 最终完美版</title>
     <style>
         :root {
             --primary: #3b82f6; --bg: #fdfdfd; --border: #e2e8f0;
@@ -176,7 +176,7 @@
 
         let currentUser = null;
         
-        // --- 修复：使用本地时间代替 UTC 时间 ---
+        // --- 修复1：使用本地时间代替 UTC 时间 ---
         const today = new Date();
         const y = today.getFullYear();
         const m = String(today.getMonth() + 1).padStart(2, '0');
@@ -379,52 +379,93 @@
             }
         };
 
+        // --- 修复2：processAI 增加强力保险，防止 undefined 报错 ---
         window.processAI = async () => {
             const input = document.getElementById('aiInput').value.trim();
             const key = document.getElementById('apiKey').value.trim();
-            if (!input || !key) return;
-            const btn = document.getElementById('aiBtn'); btn.disabled = true;
+            
+            if (!input) return;
+            if (!key) { alert("⚠️ 请先填写 API Key 并点击‘存云端’"); return; }
+
+            const btn = document.getElementById('aiBtn'); 
+            btn.disabled = true;
+            btn.textContent = "AI 思考中..."; 
+            
             const chatCol = collection(db, `users/${currentUser.uid}/chats`);
 
             try {
+                // 1. 处理特殊指令（摘抄）
                 if (input.startsWith("摘抄：") || input.startsWith("摘抄:")) {
                     const text = input.replace(/摘抄：|摘抄:/, "").trim();
                     await addDoc(collection(db, `users/${currentUser.uid}/quotes`), { text, source: "对话录入", timestamp: serverTimestamp() });
                     await syncQuotes();
                     await addDoc(chatCol, { role: 'user', text: input, date: selectedDate, timestamp: serverTimestamp() });
-                    await addDoc(chatCol, { role: 'coach', text: "✨ 收到！存入书架啦。", date: selectedDate, timestamp: serverTimestamp() });
+                    await addDoc(chatCol, { role: 'coach', text: "✨ 收到！已存入书架。", date: selectedDate, timestamp: serverTimestamp() });
                     document.getElementById('aiInput').value = "";
                     return;
                 }
 
-                const history = chatsCache.slice(-5).map(c => ({ role: c.role === 'coach' ? 'assistant' : 'user', content: c.text }));
+                // 2. 用户消息上墙
                 await addDoc(chatCol, { role: 'user', text: input, date: selectedDate, timestamp: serverTimestamp() });
+                document.getElementById('aiInput').value = ""; 
 
+                // 3. 准备历史上下文
+                const history = chatsCache.slice(-5).map(c => ({ role: c.role === 'coach' ? 'assistant' : 'user', content: c.text }));
+
+                // 4. 请求 AI
                 const res = await fetch("https://api.deepseek.com/chat/completions", {
                     method: "POST",
                     headers: { "Content-Type": "application/json", "Authorization": `Bearer ${key}` },
                     body: JSON.stringify({
                         model: "deepseek-chat",
                         messages: [
-                            { role: "system", content: "你是一个阳光幽默的健身搭子。多发表情包💪。JSON回复格式。" },
+                            { role: "system", content: "你是一个阳光幽默的健身搭子。多发表情包💪。请务必返回 JSON 格式，包含字段 'coach_reply' 作为回复内容。如果涉及任务增删，请包含 'changes' 数组。" },
                             ...history,
-                            { role: "user", content: `(任务：[${currentTasks.map(t=>t.title).join(',')}])。用户反馈：${input}` }
+                            { role: "user", content: `(任务状态：[${currentTasks.map(t=>t.title).join(',')}])。用户说：${input}` }
                         ],
                         response_format: { type: "json_object" }
                     })
                 });
 
-                const result = JSON.parse((await res.json()).choices[0].message.content);
-                await addDoc(chatCol, { role: 'coach', text: result.coach_reply, date: selectedDate, timestamp: serverTimestamp() });
+                if (!res.ok) {
+                    const errText = await res.text();
+                    throw new Error(`API 请求失败: ${res.status} - ${errText}`);
+                }
+
+                const jsonStr = (await res.json()).choices[0].message.content;
+                let result;
                 
-                if (result.changes) {
+                // 尝试解析 JSON，如果解析失败或字段缺失，进行兜底处理
+                try {
+                    result = JSON.parse(jsonStr);
+                } catch (e) {
+                    console.warn("JSON 解析失败，回退到纯文本模式");
+                    result = { coach_reply: jsonStr };
+                }
+
+                // 【关键修复点】确保 text 永远不是 undefined
+                const finalReply = result.coach_reply || result.message || result.msg || JSON.stringify(result) || "（AI 点了点头，但什么都没说）";
+
+                // 5. AI 回复上墙
+                await addDoc(chatCol, { role: 'coach', text: finalReply, date: selectedDate, timestamp: serverTimestamp() });
+                
+                // 6. 处理任务变动
+                if (result.changes && Array.isArray(result.changes)) {
                     const taskCol = collection(db, `users/${currentUser.uid}/tasks`);
                     for (const c of result.changes) {
-                        if (c.action === 'ADD') await addDoc(taskCol, { title: c.title, date: selectedDate, isDone: false, order: Date.now() });
+                        if (c.action === 'ADD' && c.title) {
+                            await addDoc(taskCol, { title: c.title, date: selectedDate, isDone: false, order: Date.now() });
+                        }
                     }
                 }
-                document.getElementById('aiInput').value = "";
-            } catch (e) { console.error(e); } finally { btn.disabled = false; }
+                
+            } catch (e) { 
+                console.error("过程出错:", e); 
+                alert("❌ 出错了：\n" + e.message); 
+            } finally { 
+                btn.disabled = false; 
+                btn.textContent = "发送";
+            }
         };
     </script>
 </body>
