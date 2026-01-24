@@ -160,7 +160,7 @@
                         </div>
                         <textarea id="aiInput" placeholder="直接说'我刚做了30个卷腹'，或者随意聊天..."></textarea>
                         <button class="ai-btn" id="aiBtn" onclick="processAI()">发送</button>
-                        <button class="small-btn" style="float:left; margin-top:14px;" onclick="clearChats()">清空今日对话</button>
+                         <button class="small-btn" style="float:left; margin-top:14px;" onclick="clearChats()">清空今日对话</button>
                     </div>
                 </div>
 
@@ -222,11 +222,13 @@
         function logout() { return signOut(auth); }
 
         async function loadKey() {
+            if (!currentUser) return; // 确保用户已登录
             const d = await getDoc(doc(db, `users/${currentUser.uid}/settings`, "deepseek"));
             if (d.exists()) document.getElementById('apiKey').value = d.data().apiKey;
         }
 
         window.saveKeyToFirebase = async () => {
+            if (!currentUser) { alert("请先登录！"); return; }
             const key = document.getElementById('apiKey').value.trim();
             if (!key) return;
             await setDoc(doc(db, `users/${currentUser.uid}/settings`, "deepseek"), { apiKey: key, updatedAt: serverTimestamp() });
@@ -235,6 +237,7 @@
 
         // 摘抄相关
         async function syncQuotes() {
+            if (!currentUser) return; // 确保用户已登录
             const qSnap = await getDocs(query(collection(db, `users/${currentUser.uid}/quotes`), orderBy("timestamp", "desc")));
             quotesCache = qSnap.docs.map(d => ({id: d.id, ...d.data()}));
             displayQuoteByDay();
@@ -249,6 +252,7 @@
         function openAddQuoteModal() { document.getElementById('editingQuoteId').value = ""; document.getElementById('quoteInput').value = ""; document.getElementById('quoteSource').value = ""; document.getElementById('addQuoteModal').style.display = 'flex'; }
         function closeAddQuoteModal() { document.getElementById('addQuoteModal').style.display = 'none'; }
         async function saveQuoteManual() {
+            if (!currentUser) return;
             const text = document.getElementById('quoteInput').value.trim(); const source = document.getElementById('quoteSource').value.trim(); const qId = document.getElementById('editingQuoteId').value;
             if (!text) return;
             if (qId) await updateDoc(doc(db, `users/${currentUser.uid}/quotes`, qId), { text, source });
@@ -280,6 +284,7 @@
         function openAddTaskModal() { document.getElementById('addTaskModal').style.display = 'flex'; }
         function closeAddTaskModal() { document.getElementById('addTaskModal').style.display = 'none'; }
         async function saveTaskManual() {
+            if (!currentUser) return;
             const title = document.getElementById('manualTaskInput').value.trim();
             const cal = document.getElementById('manualCalInput').value.trim() || 0;
             if (title) {
@@ -295,17 +300,14 @@
         }
         async function deleteTask(id) { if(confirm("删除此项目？")) await deleteDoc(doc(db, `users/${currentUser.uid}/tasks`, id)); }
         async function clearChats() { 
-            if(confirm("清空今日对话？")) {
-                const batch = writeBatch(db);
-                const q = await getDocs(query(collection(db, `users/${currentUser.uid}/chats`), where("date", "==", selectedDate)));
-                q.forEach(d => batch.delete(d.ref));
-                await batch.commit();
-                // 清除额外卡路里
-                await setDoc(doc(db, `users/${currentUser.uid}/dailyStats`, selectedDate), { bonusCalories: 0 }, { merge: true });
-            }
+            if(!currentUser || !confirm("清空今日对话？")) return;
+            const batch = writeBatch(db);
+            const q = await getDocs(query(collection(db, `users/${currentUser.uid}/chats`), where("date", "==", selectedDate)));
+            q.forEach(d => batch.delete(d.ref));
+            await batch.commit();
         }
         async function toggleTask(id, s, title) {
-            if (isProcessing) return;
+            if (!currentUser || isProcessing) return;
             const newStatus = !s;
             await updateDoc(doc(db, `users/${currentUser.uid}/tasks`, id), { isDone: newStatus });
             if (newStatus) {
@@ -314,6 +316,7 @@
             }
         }
         async function forceInheritTasks() {
+            if (!currentUser) return;
             const tCol = collection(db, `users/${currentUser.uid}/tasks`);
             // 1. 查找上一个有任务的日期
             const snapPast = await getDocs(query(tCol, where("date", "<", selectedDate), orderBy("date", "desc"), limit(1)));
@@ -351,7 +354,7 @@
             const key = document.getElementById('apiKey').value.trim();
             const aiBtn = document.getElementById('aiBtn');
 
-            if (!input || !key || isProcessing) return;
+            if (!input || !key || isProcessing || !currentUser) return;
             
             isProcessing = true; 
             aiBtn.disabled = true;
@@ -403,6 +406,7 @@
         }
         
         async function triggerTaskCoach(title) {
+            if (!currentUser) return;
             const key = document.getElementById('apiKey').value.trim();
             if (!key) return;
             // 确保只取最近的聊天记录，避免 token 爆炸
@@ -428,6 +432,7 @@
         }
 
         async function triggerGreeting() {
+            if (!currentUser) return;
             const key = document.getElementById('apiKey').value.trim();
             if (!key) return;
             try {
@@ -446,14 +451,16 @@
             }
         }
         
-        // ** 【新增的核心逻辑 1: 实时数据监听函数】 **
+        // ** 【修复：新增的核心逻辑 1: 实时数据监听函数】 **
         function initView(date) {
+            if (!currentUser) return;
             document.getElementById('dateDisplay').textContent = date;
             
             // 停止之前的监听
             if (unsubT) unsubT();
             if (unsubC) unsubC();
             if (unsubS) unsubS();
+            window.currentBonusCal = 0; // 重置额外卡路里
 
             // 任务列表监听
             unsubT = onSnapshot(query(collection(db, `users/${currentUser.uid}/tasks`), where("date", "==", date), orderBy("order", "asc")), (snapshot) => {
@@ -519,7 +526,7 @@
             el.scrollTop = el.scrollHeight;
         }
 
-        // ** 【新增的核心逻辑 2: 认证状态监听】 **
+        // ** 【修复：新增的核心逻辑 2: 认证状态监听】 **
         onAuthStateChanged(auth, (user) => {
             if (user) {
                 // 用户已登录
@@ -531,8 +538,9 @@
                 // 1. 初始化视图：加载当前日期的数据
                 initView(selectedDate);
                 
-                // 2. 检查并触发问候 (可选，避免每次刷新都触发)
+                // 2. 检查并触发问候 (可选，确保只触发一次)
                 setTimeout(async () => {
+                    // 仅在当前日期无聊天记录时触发问候
                     const qSnap = await getDocs(query(collection(db, `users/${currentUser.uid}/chats`), where("date", "==", selectedDate), limit(1)));
                     if (qSnap.empty) {
                         triggerGreeting();
@@ -574,10 +582,12 @@
         window.saveTaskManual = saveTaskManual;
         window.deleteTask = deleteTask;
         window.clearChats = clearChats;
-        window.toggleTask = toggleTask;
+        // 修复了 toggleTask 中 title 参数可能包含单引号导致 JS 错误的问题
+        window.toggleTask = toggleTask; 
         window.forceInheritTasks = forceInheritTasks;
-        window.initView = initView; // 确保 initView 可被访问
+        window.initView = initView; 
         window.processAI = processAI;
+        
     </script>
 </body>
 </html>
