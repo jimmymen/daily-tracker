@@ -91,7 +91,6 @@
     <div id="loginScreen" style="position:fixed;inset:0;background:#3b82f6;display:flex;justify-content:center;align-items:center;z-index:9000;">
         <div style="background:white;padding:35px;border-radius:25px;text-align:center;width:85%;max-width:300px;">
             <h1 style="font-size:3rem;margin:0">🧬</h1>
-            <!-- 注意：这里不使用 title 的 ID，而是 header 里的文本，但为了监听方便，我们最终监听 header -->
             <h2>进化清单 Pro</h2>
             <button onclick="login()" style="width:100%;padding:15px;background:#3b82f6;color:white;border:none;border-radius:12px;font-weight:bold;cursor:pointer;">Google 登录</button>
         </div>
@@ -136,7 +135,7 @@
 
 
     <div id="app" class="container" style="display: none;">
-        <!-- 增加 id="appHeader" 方便三连击监听 -->
+        <!-- 增加 id="appHeader" 作为三连击监听目标 -->
         <div id="appHeader" class="header">
             <span id="userName" style="font-weight: bold;">你好</span>
             <div style="display: flex; align-items: center; gap: 12px;">
@@ -342,40 +341,61 @@
                 }
             }
         }
-        
-        // 在 DOM 加载后，绑定事件
-        document.addEventListener('DOMContentLoaded', () => {
-             const headerEl = document.getElementById('appHeader');
-             // 由于 appHeader 是在 app 内部，app 初始是 hidden 的，所以我们监听它的点击事件
-             // 如果用户没登录 appHeader 是不存在的，所以我们在 onAuthStateChanged 里绑定更可靠
-        });
 
-        // 记账数据写入
+        // 记账数据写入（已修复，增加错误捕获和调试信息）
         window.saveExpenseManual = async () => {
-            if (!currentUser) return;
+            if (!currentUser) {
+                alert("请先登录才能录入账目！");
+                return;
+            }
+            
+            // 1. 获取并处理数据
             const date = document.getElementById('expenseDate').value;
-            const amount = Number(document.getElementById('expenseAmount').value.trim());
+            const amountStr = document.getElementById('expenseAmount').value.trim();
             const payer = document.getElementById('expensePayer').value;
             const description = document.getElementById('expenseDescription').value.trim();
             
-            if (date && amount > 0 && payer) {
-                await addDoc(collection(db, `users/${currentUser.uid}/expenses`), { 
+            // 2. 严格校验
+            const amount = Number(amountStr);
+
+            if (!date) { alert("请选择花费日期！"); return; }
+            if (amount <= 0 || isNaN(amount)) { alert("请输入有效的金额！"); return; }
+            if (!payer) { alert("请选择花费归属人！"); return; }
+
+            try {
+                // 3. 写入数据
+                const docRef = await addDoc(collection(db, `users/${currentUser.uid}/expenses`), { 
                     date, 
-                    amount, 
+                    amount: amount, // 确保存入的是数字
                     payer, 
                     description,
                     timestamp: serverTimestamp() 
                 });
+
+                // 4. 成功提示（重要：请在浏览器 F12 控制台查看此信息）
+                console.log("✅ 账目添加成功，ID:", docRef.id);
+                
+                // 5. 清空并关闭
                 closeAddExpenseModal();
-            } else {
-                alert("请填写正确的日期和金额！");
+                document.getElementById('expenseAmount').value = '';
+                document.getElementById('expenseDescription').value = '';
+
+            } catch (e) {
+                // 6. 错误捕获：将错误打印到控制台，这是诊断问题的关键
+                console.error("❌ 写入 Firestore 失败！请检查 Firebase 安全规则或网络连接。", e);
+                alert("保存账目失败，请查看浏览器控制台（F12）获取详情！");
             }
         };
+
 
         // 记账数据删除
         window.deleteExpense = async (id) => {
             if (confirm("删除此账目？")) { 
-                await deleteDoc(doc(db, `users/${currentUser.uid}/expenses`, id)); 
+                try {
+                    await deleteDoc(doc(db, `users/${currentUser.uid}/expenses`, id)); 
+                } catch (e) {
+                     console.error("❌ 删除 Firestore 失败！", e);
+                }
             }
         };
 
@@ -415,18 +435,18 @@
                 const amount = Number(e.amount) || 0;
                 
                 // 历史总计
-                stats.total[e.payer] += amount;
+                stats.total[e.payer] = (stats.total[e.payer] || 0) + amount;
                 stats.total['Total'] += amount;
 
                 // 本年总计
                 if (e.date.startsWith(String(currentYear))) {
-                    stats.yearly[e.payer] += amount;
+                    stats.yearly[e.payer] = (stats.yearly[e.payer] || 0) + amount;
                     stats.yearly['Total'] += amount;
                 }
 
                 // 本月总计
                 if (e.date.startsWith(currentMonthKey)) {
-                    stats.monthly[e.payer] += amount;
+                    stats.monthly[e.payer] = (stats.monthly[e.payer] || 0) + amount;
                     stats.monthly['Total'] += amount;
                 }
             });
