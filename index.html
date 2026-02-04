@@ -3,7 +3,8 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
-    <title>进化清单 Pro - 最终稳定版</title>
+    <!-- 将 title 提取出来，方便三连击监听 -->
+    <title id="appTitle">进化清单 Pro - 最终稳定版</title>
     <style>
         :root {
             --primary: #3b82f6; --bg: #fdfdfd; --border: #e2e8f0;
@@ -14,7 +15,7 @@
         body { font-family: "PingFang SC", "Microsoft YaHei", serif; background: var(--bg); margin: 0; padding: 8px; color: #1e293b; }
         
         .container { max-width: 1100px; margin: 0 auto; display: flex; flex-direction: column; gap: 10px; }
-        .main-layout { display: flex; flex-direction: column; gap: 10px; }
+        .main-layout { display: flex; flex-direction: column; gap: 10px; } /* 用于控制主页的显示/隐藏 */
 
         .header { background: linear-gradient(135deg, #2563eb, #3b82f6); color: white; padding: 12px 20px; border-radius: 15px; display: flex; justify-content: space-between; align-items: center; }
         
@@ -49,7 +50,8 @@
             .task-section-todo { order: initial; grid-column: 1 / 2; grid-row: 1 / 2; }
             .task-section-done { order: initial; grid-column: 1 / 2; grid-row: 2 / 3; }
             .chat-box { height: calc(100vh - 380px) !important; }
-            .main-layout { display: block; }
+            /* 调整 main-layout 的 display，确保切换时桌面端布局正确 */
+            .main-layout { display: flex; } 
         }
 
         /* 任务清单样式 */
@@ -74,6 +76,14 @@
         
         .modal-overlay { position: fixed; inset: 0; background: rgba(0,0,0,0.3); display: none; justify-content: center; align-items: center; z-index: 5000; }
         .modal-content { background: white; padding: 20px; border-radius: 20px; width: 90%; max-width: 400px; }
+
+        /* 记账页面特有样式 */
+        .expense-stats-grid { display: grid; grid-template-columns: repeat(3, 1fr); gap: 10px; text-align: center; }
+        .expense-total-summary { grid-column: 1 / span 3; background: #ecfdf5; border: 1px dashed #a7f3d0; padding: 10px; border-radius: 12px; font-weight: bold; text-align: center; color: #059669; }
+        .expense-stat-card { background: white; border: 1px solid #e2e8f0; padding: 10px; border-radius: 12px; box-shadow: 0 1px 4px rgba(0,0,0,0.05); }
+        .expense-stat-val { font-size: 1.5rem; font-weight: 900; }
+        .expense-stat-label { font-size: 0.75rem; color: #64748b; margin-top: 4px; }
+        
     </style>
 </head>
 <body>
@@ -81,6 +91,7 @@
     <div id="loginScreen" style="position:fixed;inset:0;background:#3b82f6;display:flex;justify-content:center;align-items:center;z-index:9000;">
         <div style="background:white;padding:35px;border-radius:25px;text-align:center;width:85%;max-width:300px;">
             <h1 style="font-size:3rem;margin:0">🧬</h1>
+            <!-- 注意：这里不使用 title 的 ID，而是 header 里的文本，但为了监听方便，我们最终监听 header -->
             <h2>进化清单 Pro</h2>
             <button onclick="login()" style="width:100%;padding:15px;background:#3b82f6;color:white;border:none;border-radius:12px;font-weight:bold;cursor:pointer;">Google 登录</button>
         </div>
@@ -106,9 +117,27 @@
         </div>
     </div>
     <div id="manageQuotesModal" class="modal-overlay" onclick="if(event.target===this) closeManageQuotesModal()"><div class="modal-content"><div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:15px;"><h3>📖 我的书架</h3><button class="small-btn" onclick="closeManageQuotesModal()">关闭</button></div><div id="quotesManageList"></div></div></div>
+    
+    <!-- 新增支出弹窗 -->
+    <div id="addExpenseModal" class="modal-overlay" onclick="if(event.target===this) closeAddExpenseModal()">
+        <div class="modal-content">
+            <h3 style="margin-top:0">💸 记录新账目</h3>
+            <input type="date" id="expenseDate" style="width:100%;padding:12px;border:1px solid var(--border);border-radius:10px;margin-bottom:12px;" required>
+            <input type="number" id="expenseAmount" style="width:100%;padding:12px;border:1px solid var(--border);border-radius:10px;margin-bottom:12px;" placeholder="金额 (¥)" required>
+            <select id="expensePayer" style="width:100%;padding:12px;border:1px solid var(--border);border-radius:10px;margin-bottom:12px;">
+                <option value="我">我</option>
+                <option value="媳妇">媳妇</option>
+                <option value="七喜">七喜</option>
+            </select>
+            <input type="text" id="expenseDescription" style="width:100%;padding:12px;border:1px solid var(--border);border-radius:10px;margin-bottom:15px;" placeholder="用途/描述 (可选)">
+            <div style="display:flex;justify-content:flex-end;gap:8px;"><button class="small-btn" onclick="closeAddExpenseModal()">取消</button><button class="ai-btn" style="margin:0; background:#16a34a;" onclick="saveExpenseManual()">保存</button></div>
+        </div>
+    </div>
+
 
     <div id="app" class="container" style="display: none;">
-        <div class="header">
+        <!-- 增加 id="appHeader" 方便三连击监听 -->
+        <div id="appHeader" class="header">
             <span id="userName" style="font-weight: bold;">你好</span>
             <div style="display: flex; align-items: center; gap: 12px;">
                 <button title="书架管理" style="border:none;background:none;font-size:1.3rem;cursor:pointer;" onclick="openManageQuotesModal()">📖</button>
@@ -183,6 +212,51 @@
         </div>
     </div>
 
+    <!-- 新增记账视图 - 默认隐藏 -->
+    <div id="expenseTrackerView" class="container" style="display: none; padding-top: 10px;">
+        <div class="header" style="background: linear-gradient(135deg, #16a34a, #22c55e); margin-bottom: 10px;">
+            <span style="font-weight: bold;">💸 家庭账本</span>
+            <button class="small-btn" onclick="closeExpenseView()" style="background:white; color:#16a34a; font-weight: bold;">&larr; 退出</button>
+        </div>
+
+        <!-- 记账录入区域 -->
+        <div class="task-box" style="margin-bottom: 10px;">
+            <div style="display:flex; justify-content:space-between; margin-bottom:12px;">
+                <span style="font-weight:800; font-size:0.85rem; color:#64748b;">✍️ 新增支出</span>
+                <button class="small-btn" style="background:#16a34a; color:white; border-color:#149343;" onclick="openAddExpenseModal()">+ 录入</button>
+            </div>
+        </div>
+
+        <!-- 记账统计区域 -->
+        <div id="expenseStats" class="task-box" style="margin-bottom: 10px;">
+            <span style="font-weight:800; font-size:0.85rem; color:#16a34a; display:block; margin-bottom:12px;">📈 支出总览</span>
+            <!-- 月度统计 -->
+            <div style="margin-bottom: 15px;">
+                <div style="font-weight: 700; font-size: 0.9rem; color: #4b5563; margin-bottom: 8px;">📅 本月累计 (<span id="currentMonthYear"></span>)</div>
+                <div id="monthlyStatsSummary" class="expense-stats-grid"></div>
+            </div>
+            <!-- 年度统计 -->
+            <div style="margin-bottom: 15px;">
+                <div style="font-weight: 700; font-size: 0.9rem; color: #4b5563; margin-bottom: 8px;">🗓️ 本年累计 (<span id="currentYear"></span>)</div>
+                <div id="yearlyStatsSummary" class="expense-stats-grid"></div>
+            </div>
+            <!-- 历史总计 -->
+            <div>
+                <div style="font-weight: 700; font-size: 0.9rem; color: #4b5563; margin-bottom: 8px;">⏳ 历史总支出</div>
+                <div id="totalStatsSummary" class="expense-stats-grid"></div>
+            </div>
+        </div>
+
+        <!-- 账单列表区域 -->
+        <div class="task-box">
+            <span style="font-weight:800; font-size:0.85rem; color:#64748b; display:block; margin-bottom:12px;">🧾 账目列表 (按时间降序)</span>
+            <div id="expenseList" class="task-list">
+                <!-- 账单列表将由 JS 填充 -->
+            </div>
+        </div>
+    </div>
+
+
     <script type="module">
         import { initializeApp } from 'https://www.gstatic.com/firebasejs/10.7.1/firebase-app.js';
         import { getFirestore, collection, addDoc, query, where, getDocs, orderBy, limit, updateDoc, doc, deleteDoc, onSnapshot, serverTimestamp, setDoc, getDoc, increment, writeBatch } from 'https://www.gstatic.com/firebasejs/10.7.1/firebase-firestore.js';
@@ -207,13 +281,209 @@
         const now = new Date();
         let selectedDate = `${now.getFullYear()}-${String(now.getMonth()+1).padStart(2,'0')}-${String(now.getDate()).padStart(2,'0')}`;
         
-        let unsubT = null, unsubC = null, unsubS = null;
+        let unsubT = null, unsubC = null, unsubS = null, unsubE = null; // 新增 unsubE
         let currentTasks = [];
         let chatsCache = [];
         let quotesCache = [];
+        let currentExpenses = []; // 新增记账数据缓存
         window.currentBonusCal = 0; 
 
-        // --- 函数定义 ---
+        // --- 记账视图与入口逻辑 (新增/修改) ---
+        
+        // 视图切换
+        window.openExpenseView = () => {
+            // 兼容移动端和桌面端
+            document.querySelector('.main-layout').style.display = 'none'; 
+            document.getElementById('expenseTrackerView').style.display = 'flex';
+            document.getElementById('app').style.display = 'none'; // 隐藏整个运动主页
+            
+            loadExpenseData(); // 加载记账数据
+        };
+        window.closeExpenseView = () => {
+            // 恢复主页显示
+            document.getElementById('app').style.display = 'flex';
+            document.querySelector('.main-layout').style.display = ''; // 恢复 CSS 默认或媒体查询设置
+            document.getElementById('expenseTrackerView').style.display = 'none';
+
+            if (unsubE) unsubE(); // 停止记账页面的监听
+        };
+
+        // 记账弹窗
+        window.openAddExpenseModal = () => {
+            document.getElementById('expenseDate').value = new Date().toISOString().substring(0, 10);
+            document.getElementById('expenseAmount').value = '';
+            document.getElementById('expensePayer').value = '我';
+            document.getElementById('expenseDescription').value = '';
+            document.getElementById('addExpenseModal').style.display = 'flex';
+        };
+        window.closeAddExpenseModal = () => {
+            document.getElementById('addExpenseModal').style.display = 'none';
+        };
+        
+        // 三连击入口逻辑
+        let clickCount = 0;
+        let lastClickTime = 0;
+
+        function handleTripleClick(event) {
+            const now = Date.now();
+            if (now - lastClickTime < 500) { // 500ms 内视为连击
+                clickCount++;
+            } else {
+                clickCount = 1;
+            }
+            lastClickTime = now;
+
+            if (clickCount === 3) {
+                if (currentUser) {
+                    window.openExpenseView();
+                    clickCount = 0; // 重置计数器
+                } else {
+                    alert("请先登录才能使用记账功能！");
+                }
+            }
+        }
+        
+        // 在 DOM 加载后，绑定事件
+        document.addEventListener('DOMContentLoaded', () => {
+             const headerEl = document.getElementById('appHeader');
+             // 由于 appHeader 是在 app 内部，app 初始是 hidden 的，所以我们监听它的点击事件
+             // 如果用户没登录 appHeader 是不存在的，所以我们在 onAuthStateChanged 里绑定更可靠
+        });
+
+        // 记账数据写入
+        window.saveExpenseManual = async () => {
+            if (!currentUser) return;
+            const date = document.getElementById('expenseDate').value;
+            const amount = Number(document.getElementById('expenseAmount').value.trim());
+            const payer = document.getElementById('expensePayer').value;
+            const description = document.getElementById('expenseDescription').value.trim();
+            
+            if (date && amount > 0 && payer) {
+                await addDoc(collection(db, `users/${currentUser.uid}/expenses`), { 
+                    date, 
+                    amount, 
+                    payer, 
+                    description,
+                    timestamp: serverTimestamp() 
+                });
+                closeAddExpenseModal();
+            } else {
+                alert("请填写正确的日期和金额！");
+            }
+        };
+
+        // 记账数据删除
+        window.deleteExpense = async (id) => {
+            if (confirm("删除此账目？")) { 
+                await deleteDoc(doc(db, `users/${currentUser.uid}/expenses`, id)); 
+            }
+        };
+
+        // 记账数据加载与监听
+        async function loadExpenseData() {
+            if (!currentUser) return;
+
+            if (unsubE) unsubE(); 
+
+            // 监听所有账目数据，按日期和时间降序排列
+            unsubE = onSnapshot(query(collection(db, `users/${currentUser.uid}/expenses`), orderBy("date", "desc"), orderBy("timestamp", "desc")), (snapshot) => {
+                currentExpenses = snapshot.docs.map(d => ({id: d.id, ...d.data()}));
+                
+                renderExpenseStats(currentExpenses); 
+                renderExpenseList(currentExpenses); 
+            });
+        }
+
+        // 渲染统计 (包含月、年、总)
+        function renderExpenseStats(expenses) {
+            const now = new Date();
+            const currentYear = now.getFullYear();
+            const currentMonth = String(now.getMonth() + 1).padStart(2, '0');
+            const currentMonthKey = `${currentYear}-${currentMonth}`;
+
+            document.getElementById('currentMonthYear').textContent = currentMonthKey;
+            document.getElementById('currentYear').textContent = currentYear;
+
+            const stats = { 
+                monthly: { '我': 0, '媳妇': 0, '七喜': 0, 'Total': 0 },
+                yearly: { '我': 0, '媳妇': 0, '七喜': 0, 'Total': 0 },
+                total: { '我': 0, '媳妇': 0, '七喜': 0, 'Total': 0 }
+            };
+            
+            expenses.forEach(e => {
+                // 确保 amount 是数字
+                const amount = Number(e.amount) || 0;
+                
+                // 历史总计
+                stats.total[e.payer] += amount;
+                stats.total['Total'] += amount;
+
+                // 本年总计
+                if (e.date.startsWith(String(currentYear))) {
+                    stats.yearly[e.payer] += amount;
+                    stats.yearly['Total'] += amount;
+                }
+
+                // 本月总计
+                if (e.date.startsWith(currentMonthKey)) {
+                    stats.monthly[e.payer] += amount;
+                    stats.monthly['Total'] += amount;
+                }
+            });
+
+            // 辅助渲染函数
+            const renderStatBlock = (data, elementId) => {
+                const colors = { '我': '#4f46e5', '媳妇': '#f97316', '七喜': '#0d9488' };
+                const summaryHtml = `
+                    <div class="expense-stat-card">
+                        <div class="expense-stat-val" style="color:${colors['我']};">¥${data['我'].toFixed(2)}</div>
+                        <div class="expense-stat-label">我</div>
+                    </div>
+                    <div class="expense-stat-card">
+                        <div class="expense-stat-val" style="color:${colors['媳妇']};">¥${data['媳妇'].toFixed(2)}</div>
+                        <div class="expense-stat-label">媳妇</div>
+                    </div>
+                    <div class="expense-stat-card">
+                        <div class="expense-stat-val" style="color:${colors['七喜']};">¥${data['七喜'].toFixed(2)}</div>
+                        <div class="expense-stat-label">七喜</div>
+                    </div>
+                    <div class="expense-total-summary">
+                        总计：<span style="font-size:1.3rem;">¥${data['Total'].toFixed(2)}</span>
+                    </div>
+                `;
+                document.getElementById(elementId).innerHTML = summaryHtml;
+            };
+
+            renderStatBlock(stats.monthly, 'monthlyStatsSummary');
+            renderStatBlock(stats.yearly, 'yearlyStatsSummary');
+            renderStatBlock(stats.total, 'totalStatsSummary');
+        }
+
+        // 渲染列表
+        function renderExpenseList(expenses) {
+            const listEl = document.getElementById('expenseList');
+            const colorMap = { '我': {bg: '#dbeafe', text: '#1d4ed8', border: '#93c5fd'}, '媳妇': {bg: '#fff7ed', text: '#f97316', border: '#fed7aa'}, '七喜': {bg: '#ccfbf1', text: '#0d9488', border: '#5eead4'} };
+            
+            listEl.innerHTML = expenses.map(e => {
+                const color = colorMap[e.payer] || {bg: '#f3e8ff', text: '#a855f7', border: '#d8b4fe'};
+                return `
+                    <div class="task-item" style="border-left: 5px solid ${color.text}; justify-content: space-between;">
+                        <div style="flex: 1; min-width: 0;">
+                            <div class="task-title" style="font-weight: 700;">¥${Number(e.amount).toFixed(2)}</div>
+                            <div style="font-size:0.75rem; color:#64748b; margin-top: 3px;">${e.description || '无描述'}</div>
+                        </div>
+                        <div style="text-align: right; margin-left: 10px; flex-shrink: 0;">
+                            <div class="task-cal-tag" style="background:${color.bg}; color:${color.text}; border:1px solid ${color.border};">${e.payer}</div>
+                            <div style="font-size:0.7rem; color:#94a3b8; margin-top: 3px;">${e.date}</div>
+                        </div>
+                        <button style="border:none;background:none;cursor:pointer;color:#ef4444; margin-left: 8px;" onclick="deleteExpense('${e.id}')">🗑️</button>
+                    </div>
+                `;
+            }).join('') || '<p style="text-align:center;color:#ccc;font-size:0.8rem;">暂无账目记录。</p>';
+        }
+
+
+        // --- 原有函数定义（保持不变） ---
 
         // 登录/登出函数
         function login() { return signInWithPopup(auth, provider); }
@@ -346,7 +616,7 @@
             alert(`已从 ${sourceDate} 同步任务，并设为待办。`);
         }
         
-        // 【新增函数 1：获取前一天训练数据】
+        // 【获取前一天训练数据】
         async function getPreviousDayData() {
             if (!currentUser) return null;
 
@@ -371,7 +641,7 @@
             return { prevDate, completedTasks, bonusCalories, userChats };
         }
         
-        // 【新增函数 2：触发日常总结】
+        // 【触发日常总结】
         async function triggerDailySummary(previousData) {
             const key = document.getElementById('apiKey').value.trim();
             if (!key || !previousData || previousData.completedTasks.length === 0) return; // 昨天没有完成任务，则不总结
@@ -416,7 +686,7 @@
             aiBtn.disabled = true;
             aiBtn.textContent = "发送中..."; 
             
-            // 【新增逻辑点 1：检查是否是当日非打卡第一条消息】
+            // 【检查是否是当日非打卡第一条消息】
             const isFirstChatToday = !chatsCache.some(c => c.role === 'user' && !c.text.startsWith('打卡完成'));
             
             try {
@@ -424,7 +694,7 @@
                 await addDoc(collection(db, `users/${currentUser.uid}/chats`), { role: 'user', text: input, date: selectedDate, timestamp: serverTimestamp() });
                 document.getElementById('aiInput').value = "";
 
-                // 【新增逻辑点 2：触发昨日总结】
+                // 【触发昨日总结】
                 if (isFirstChatToday) {
                     const previousData = await getPreviousDayData();
                     triggerDailySummary(previousData);
@@ -621,6 +891,9 @@
                         triggerGreeting();
                     }
                 }, 1000); 
+                
+                // 3. 绑定三连击入口事件
+                document.getElementById('appHeader').addEventListener('click', handleTripleClick);
 
             } else {
                 // 用户未登录或已登出
@@ -633,6 +906,11 @@
                 if (unsubT) unsubT();
                 if (unsubC) unsubC();
                 if (unsubS) unsubS();
+                if (unsubE) unsubE(); // 停止记账监听
+
+                // 解绑三连击入口事件（可选，但推荐）
+                const headerEl = document.getElementById('appHeader');
+                if (headerEl) headerEl.removeEventListener('click', handleTripleClick);
             }
         });
 
@@ -661,6 +939,14 @@
         window.forceInheritTasks = forceInheritTasks;
         window.initView = initView; 
         window.processAI = processAI;
+        
+        // 记账相关函数挂载
+        window.openExpenseView = openExpenseView;
+        window.closeExpenseView = closeExpenseView;
+        window.openAddExpenseModal = openAddExpenseModal;
+        window.closeAddExpenseModal = closeAddExpenseModal;
+        window.saveExpenseManual = saveExpenseManual;
+        window.deleteExpense = deleteExpense;
         
     </script>
 </body>
