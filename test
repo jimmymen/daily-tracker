@@ -1,0 +1,953 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+    <!-- 将 title 提取出来，方便三连击监听 -->
+    <title id="appTitle">进化清单 Pro - 最终稳定版</title>
+    <style>
+        :root {
+            --primary: #3b82f6; --bg: #fdfdfd; --border: #e2e8f0;
+            --user-msg: #3b82f6; --coach-bg: #fff1f2; --coach-text: #9f1239;
+            --quote-bg: #f0f9ff; --quote-text: #0369a1;
+        }
+        * { box-sizing: border-box; -webkit-tap-highlight-color: transparent; }
+        body { font-family: "PingFang SC", "Microsoft YaHei", serif; background: var(--bg); margin: 0; padding: 8px; color: #1e293b; }
+        
+        .container { max-width: 1100px; margin: 0 auto; display: flex; flex-direction: column; gap: 10px; }
+        .main-layout { display: flex; flex-direction: column; gap: 10px; } /* 用于控制主页的显示/隐藏 */
+
+        .header { background: linear-gradient(135deg, #2563eb, #3b82f6); color: white; padding: 12px 20px; border-radius: 15px; display: flex; justify-content: space-between; align-items: center; }
+        
+        /* 布局顺序控制 (移动端默认) */
+        .quote-card-wrapper { order: 1; }
+        .stat-card-wrapper { order: 2; }
+        .date-nav-wrapper { order: 3; }
+        .main-content { order: 4; }
+
+        .stat-card { background: white; border: 1px solid var(--border); padding: 15px; border-radius: 16px; text-align: center; box-shadow: 0 2px 8px rgba(0,0,0,0.05); }
+        .stat-val { font-size: 2.2rem; font-weight: 900; color: #f59e0b; }
+        .stat-label { font-size: 0.8rem; color: #64748b; font-weight: bold; margin-top: 4px; }
+
+        .quote-card { background: var(--quote-bg); border: 1px dashed #bae6fd; border-radius: 15px; padding: 15px; text-align: center; cursor: pointer; min-height: 80px; display: flex; flex-direction: column; justify-content: center; }
+        #quoteText { font-size: 0.9rem; color: var(--quote-text); font-style: italic; font-weight: 500; }
+        #quoteBook { font-size: 0.7rem; color: #64748b; margin-top: 5px; }
+
+        .date-nav-wrapper { display: flex; align-items: center; gap: 10px; background: #fff; padding: 8px 15px; border-radius: 12px; border: 1px solid var(--border); }
+        .date-str { font-weight: 800; color: var(--primary); font-size: 0.9rem; }
+
+        /* 主内容区域内部的顺序控制 (移动端) */
+        .main-content { display: flex; flex-direction: column; gap: 10px; }
+        .chat-section { order: 1; }
+        .task-section-todo { order: 2; }
+        .task-section-done { order: 3; }
+        .task-box { background: white; border: 1px solid var(--border); border-radius: 15px; padding: 12px; }
+        
+        /* 桌面端布局 */
+        @media (min-width: 850px) { 
+            .main-content { display: grid; grid-template-columns: 1fr 1fr; gap: 20px; } 
+            .chat-section { order: initial; grid-column: 2 / 3; grid-row: 1 / span 3; }
+            .task-section-todo { order: initial; grid-column: 1 / 2; grid-row: 1 / 2; }
+            .task-section-done { order: initial; grid-column: 1 / 2; grid-row: 2 / 3; }
+            .chat-box { height: calc(100vh - 380px) !important; }
+            /* 调整 main-layout 的 display，确保切换时桌面端布局正确 */
+            .main-layout { display: flex; } 
+        }
+
+        /* 任务清单样式 */
+        .task-list { display: flex; flex-direction: column; gap: 8px; }
+        .task-item { display: flex; align-items: center; background: #fff; padding: 14px; border-radius: 12px; border: 1px solid var(--border); }
+        .task-item.done { opacity: 0.5; background: #f8fafc; border-style: dashed; }
+        .checkbox { width: 24px; height: 24px; border-radius: 50%; border: 2px solid var(--border); margin-right: 12px; cursor: pointer; flex-shrink: 0; }
+        .task-item.done .checkbox { background: #10b981; border-color: #10b981; }
+        .task-title { flex: 1; font-weight: 600; font-size: 0.95rem; }
+        .task-cal-tag { font-size: 0.7rem; background: #fff7ed; color: #f59e0b; padding: 2px 6px; border-radius: 6px; border: 1px solid #ffedd5; font-weight: bold; margin-right: 10px; }
+
+        /* 聊天区域 */
+        .chat-box { background: #fff; border: 1px solid var(--border); border-radius: 15px; height: 320px; overflow-y: auto; padding: 12px; display: flex; flex-direction: column; gap: 10px; }
+        .msg { max-width: 85%; padding: 10px 14px; border-radius: 14px; font-size: 0.9rem; line-height: 1.5; }
+        .msg-user { align-self: flex-end; background: var(--user-msg); color: white; border-bottom-right-radius: 2px; }
+        .msg-coach { align-self: flex-start; background: var(--coach-bg); color: var(--coach-text); border: 1px solid #ffe4e6; border-bottom-left-radius: 2px; }
+
+        .input-area { background: #fff; border: 1px solid var(--border); border-radius: 15px; padding: 12px; }
+        textarea { width: 100%; height: 50px; border: 1px solid #f1f5f9; border-radius: 10px; padding: 10px; resize: none; outline: none; background: #f8fafc; }
+        .ai-btn { background: var(--primary); color: white; border: none; padding: 8px 24px; border-radius: 10px; font-weight: bold; cursor: pointer; float: right; margin-top: 8px; }
+        .small-btn { font-size: 0.7rem; padding: 5px 10px; border-radius: 8px; border: 1px solid var(--border); background: white; cursor: pointer; color: #64748b; }
+        
+        .modal-overlay { position: fixed; inset: 0; background: rgba(0,0,0,0.3); display: none; justify-content: center; align-items: center; z-index: 5000; }
+        .modal-content { background: white; padding: 20px; border-radius: 20px; width: 90%; max-width: 400px; }
+
+        /* 记账页面特有样式 */
+        .expense-stats-grid { display: grid; grid-template-columns: repeat(3, 1fr); gap: 10px; text-align: center; }
+        .expense-total-summary { grid-column: 1 / span 3; background: #ecfdf5; border: 1px dashed #a7f3d0; padding: 10px; border-radius: 12px; font-weight: bold; text-align: center; color: #059669; }
+        .expense-stat-card { background: white; border: 1px solid #e2e8f0; padding: 10px; border-radius: 12px; box-shadow: 0 1px 4px rgba(0,0,0,0.05); }
+        .expense-stat-val { font-size: 1.5rem; font-weight: 900; }
+        .expense-stat-label { font-size: 0.75rem; color: #64748b; margin-top: 4px; }
+        
+    </style>
+</head>
+<body>
+
+    <div id="loginScreen" style="position:fixed;inset:0;background:#3b82f6;display:flex;justify-content:center;align-items:center;z-index:9000;">
+        <div style="background:white;padding:35px;border-radius:25px;text-align:center;width:85%;max-width:300px;">
+            <h1 style="font-size:3rem;margin:0">🧬</h1>
+            <!-- 注意：这里不使用 title 的 ID，而是 header 里的文本，但为了监听方便，我们最终监听 header -->
+            <h2>进化清单 Pro</h2>
+            <button onclick="login()" style="width:100%;padding:15px;background:#3b82f6;color:white;border:none;border-radius:12px;font-weight:bold;cursor:pointer;">Google 登录</button>
+        </div>
+    </div>
+
+    <!-- 新增项目弹窗 -->
+    <div id="addTaskModal" class="modal-overlay" onclick="if(event.target===this) closeAddTaskModal()">
+        <div class="modal-content">
+            <h3 style="margin-top:0">🆕 新增训练项目</h3>
+            <input type="text" id="manualTaskInput" style="width:100%;padding:12px;border:1px solid var(--border);border-radius:10px;margin-bottom:12px;" placeholder="项目名称（如：卷腹 30个）">
+            <input type="number" id="manualCalInput" style="width:100%;padding:12px;border:1px solid var(--border);border-radius:10px;margin-bottom:15px;" placeholder="设定消耗卡路里">
+            <div style="display:flex;justify-content:flex-end;gap:8px;"><button class="small-btn" onclick="closeAddTaskModal()">取消</button><button class="ai-btn" style="margin:0" onclick="saveTaskManual()">添加</button></div>
+        </div>
+    </div>
+
+    <!-- 书架录入弹窗 -->
+    <div id="addQuoteModal" class="modal-overlay" onclick="if(event.target===this) closeAddQuoteModal()">
+        <div class="modal-content">
+            <h3 id="quoteModalTitle" style="margin-top:0">🖋️ 录入摘抄</h3>
+            <input type="hidden" id="editingQuoteId"><textarea id="quoteInput" style="width:100%; height:100px; margin-bottom:10px; background:#f8fafc; border:1px solid var(--border); border-radius:10px; padding:10px;"></textarea>
+            <input type="text" id="quoteSource" style="width:100%;padding:10px;border:1px solid var(--border);border-radius:10px;margin-bottom:15px;" placeholder="来源/书名">
+            <div style="display:flex;justify-content:flex-end;gap:8px;"><button class="small-btn" onclick="closeAddQuoteModal()">取消</button><button class="ai-btn" style="margin:0; background:#0891b2" onclick="saveQuoteManual()">保存</button></div>
+        </div>
+    </div>
+    <div id="manageQuotesModal" class="modal-overlay" onclick="if(event.target===this) closeManageQuotesModal()"><div class="modal-content"><div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:15px;"><h3>📖 我的书架</h3><button class="small-btn" onclick="closeManageQuotesModal()">关闭</button></div><div id="quotesManageList"></div></div></div>
+    
+    <!-- 新增支出弹窗 -->
+    <div id="addExpenseModal" class="modal-overlay" onclick="if(event.target===this) closeAddExpenseModal()">
+        <div class="modal-content">
+            <h3 style="margin-top:0">💸 记录新账目</h3>
+            <input type="date" id="expenseDate" style="width:100%;padding:12px;border:1px solid var(--border);border-radius:10px;margin-bottom:12px;" required>
+            <input type="number" id="expenseAmount" style="width:100%;padding:12px;border:1px solid var(--border);border-radius:10px;margin-bottom:12px;" placeholder="金额 (¥)" required>
+            <select id="expensePayer" style="width:100%;padding:12px;border:1px solid var(--border);border-radius:10px;margin-bottom:12px;">
+                <option value="我">我</option>
+                <option value="媳妇">媳妇</option>
+                <option value="七喜">七喜</option>
+            </select>
+            <input type="text" id="expenseDescription" style="width:100%;padding:12px;border:1px solid var(--border);border-radius:10px;margin-bottom:15px;" placeholder="用途/描述 (可选)">
+            <div style="display:flex;justify-content:flex-end;gap:8px;"><button class="small-btn" onclick="closeAddExpenseModal()">取消</button><button class="ai-btn" style="margin:0; background:#16a34a;" onclick="saveExpenseManual()">保存</button></div>
+        </div>
+    </div>
+
+
+    <div id="app" class="container" style="display: none;">
+        <!-- 增加 id="appHeader" 方便三连击监听 -->
+        <div id="appHeader" class="header">
+            <span id="userName" style="font-weight: bold;">你好</span>
+            <div style="display: flex; align-items: center; gap: 12px;">
+                <button title="书架管理" style="border:none;background:none;font-size:1.3rem;cursor:pointer;" onclick="openManageQuotesModal()">📖</button>
+                <button title="录入书摘" style="border:none;background:none;font-size:1.3rem;cursor:pointer;" onclick="openAddQuoteModal()">🖋️</button>
+                <button style="border:none;background:none;font-size:1.3rem;cursor:pointer;" onclick="document.getElementById('hiddenDatePicker').showPicker()">📅</button>
+                <input type="date" id="hiddenDatePicker" style="position:absolute;width:0;height:0;opacity:0;" onchange="jumpToDate(this.value)">
+                <button class="small-btn" onclick="logout()">退出</button>
+            </div>
+        </div>
+
+        <!-- 外层布局控制，以便调整顺序 -->
+        <div class="main-layout">
+            
+            <!-- 名言警句 (移动端 order 1) -->
+            <div class="quote-card-wrapper">
+                <div class="quote-card" onclick="refreshQuote()">
+                    <div id="quoteText">“加载中...”</div>
+                    <div id="quoteBook">—— 加载中</div>
+                </div>
+            </div>
+
+            <!-- 卡路里统计 (移动端 order 2) -->
+            <div class="stat-card-wrapper">
+                <div class="stat-card">
+                    <div id="totalCalories" class="stat-val">0</div>
+                    <div class="stat-label">🔥 今日总消耗 (kcal)</div>
+                </div>
+            </div>
+
+            <!-- 日期导航 (移动端 order 3) -->
+            <div class="date-nav-wrapper">
+                <button onclick="changeDate(-1)" style="border:none;background:none;font-size:1.2rem;">◀</button>
+                <div id="dateDisplay" class="date-str"></div>
+                <button onclick="changeDate(1)" style="border:none;background:none;font-size:1.2rem;">▶</button>
+            </div>
+
+            <!-- 主内容区域 (任务和聊天) (移动端 order 4) -->
+            <div class="main-content">
+                
+                <!-- 聊天区域 (移动端 order 1) -->
+                <div class="chat-section">
+                    <div id="chatBox" class="chat-box"></div>
+                    <div class="input-area">
+                        <div style="display:flex; gap:8px; margin-bottom:8px;">
+                            <input type="password" id="apiKey" placeholder="在此粘贴 Key" style="flex:1; padding:5px 10px; border:1px solid var(--border); border-radius:8px; font-size:0.7rem;">
+                            <button class="small-btn" onclick="saveKeyToFirebase()">存云端</button>
+                        </div>
+                        <textarea id="aiInput" placeholder="直接说'我刚做了30个卷腹'，或者随意聊天..."></textarea>
+                        <button class="ai-btn" id="aiBtn" onclick="processAI()">发送</button>
+                         <button class="small-btn" style="float:left; margin-top:14px;" onclick="clearChats()">清空今日对话</button>
+                    </div>
+                </div>
+
+                <!-- 未完成项目 (移动端 order 2) -->
+                <div class="task-section-todo task-box">
+                    <div style="display:flex; justify-content:space-between; margin-bottom:12px;">
+                        <span style="font-weight:800; font-size:0.85rem; color:#64748b;">📋 待办清单</span>
+                        <div style="display:flex; gap:8px;">
+                            <button class="small-btn" onclick="forceInheritTasks()">🔄 同步前序</button>
+                            <button class="small-btn" onclick="openAddTaskModal()">+ 增加</button>
+                        </div>
+                    </div>
+                    <div id="todoList" class="task-list"></div>
+                </div>
+
+                <!-- 已完成项目 (移动端 order 3) -->
+                <div class="task-section-done task-box">
+                    <span style="font-weight:800; font-size:0.85rem; color:#64748b; display:block; margin-bottom:12px;">✅ 今日已完成</span>
+                    <div id="doneList" class="task-list"></div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- 新增记账视图 - 默认隐藏 -->
+    <div id="expenseTrackerView" class="container" style="display: none; padding-top: 10px;">
+        <div class="header" style="background: linear-gradient(135deg, #16a34a, #22c55e); margin-bottom: 10px;">
+            <span style="font-weight: bold;">💸 家庭账本</span>
+            <button class="small-btn" onclick="closeExpenseView()" style="background:white; color:#16a34a; font-weight: bold;">&larr; 退出</button>
+        </div>
+
+        <!-- 记账录入区域 -->
+        <div class="task-box" style="margin-bottom: 10px;">
+            <div style="display:flex; justify-content:space-between; margin-bottom:12px;">
+                <span style="font-weight:800; font-size:0.85rem; color:#64748b;">✍️ 新增支出</span>
+                <button class="small-btn" style="background:#16a34a; color:white; border-color:#149343;" onclick="openAddExpenseModal()">+ 录入</button>
+            </div>
+        </div>
+
+        <!-- 记账统计区域 -->
+        <div id="expenseStats" class="task-box" style="margin-bottom: 10px;">
+            <span style="font-weight:800; font-size:0.85rem; color:#16a34a; display:block; margin-bottom:12px;">📈 支出总览</span>
+            <!-- 月度统计 -->
+            <div style="margin-bottom: 15px;">
+                <div style="font-weight: 700; font-size: 0.9rem; color: #4b5563; margin-bottom: 8px;">📅 本月累计 (<span id="currentMonthYear"></span>)</div>
+                <div id="monthlyStatsSummary" class="expense-stats-grid"></div>
+            </div>
+            <!-- 年度统计 -->
+            <div style="margin-bottom: 15px;">
+                <div style="font-weight: 700; font-size: 0.9rem; color: #4b5563; margin-bottom: 8px;">🗓️ 本年累计 (<span id="currentYear"></span>)</div>
+                <div id="yearlyStatsSummary" class="expense-stats-grid"></div>
+            </div>
+            <!-- 历史总计 -->
+            <div>
+                <div style="font-weight: 700; font-size: 0.9rem; color: #4b5563; margin-bottom: 8px;">⏳ 历史总支出</div>
+                <div id="totalStatsSummary" class="expense-stats-grid"></div>
+            </div>
+        </div>
+
+        <!-- 账单列表区域 -->
+        <div class="task-box">
+            <span style="font-weight:800; font-size:0.85rem; color:#64748b; display:block; margin-bottom:12px;">🧾 账目列表 (按时间降序)</span>
+            <div id="expenseList" class="task-list">
+                <!-- 账单列表将由 JS 填充 -->
+            </div>
+        </div>
+    </div>
+
+
+    <script type="module">
+        import { initializeApp } from 'https://www.gstatic.com/firebasejs/10.7.1/firebase-app.js';
+        import { getFirestore, collection, addDoc, query, where, getDocs, orderBy, limit, updateDoc, doc, deleteDoc, onSnapshot, serverTimestamp, setDoc, getDoc, increment, writeBatch } from 'https://www.gstatic.com/firebasejs/10.7.1/firebase-firestore.js';
+        import { getAuth, signInWithPopup, GoogleAuthProvider, onAuthStateChanged, signOut } from 'https://www.gstatic.com/firebasejs/10.7.1/firebase-auth.js';
+
+        const firebaseConfig = {
+            apiKey: "AIzaSyCFk4f7bKUHlb3d1Cg1jyS1EM-SPC4pr40",
+            authDomain: "myflightlog-1f4cb.firebaseapp.com",
+            projectId: "myflightlog-1f4cb",
+            storageBucket: "myflightlog-1f4cb.firebasestorage.app",
+            messagingSenderId: "181072044112",
+            appId: "1:181072044112:web:ca312da2d4780227cef155"
+        };
+
+        const app = initializeApp(firebaseConfig);
+        const db = getFirestore(app);
+        const auth = getAuth(app);
+        const provider = new GoogleAuthProvider();
+
+        let currentUser = null;
+        let isProcessing = false;
+        const now = new Date();
+        let selectedDate = `${now.getFullYear()}-${String(now.getMonth()+1).padStart(2,'0')}-${String(now.getDate()).padStart(2,'0')}`;
+        
+        let unsubT = null, unsubC = null, unsubS = null, unsubE = null; // 新增 unsubE
+        let currentTasks = [];
+        let chatsCache = [];
+        let quotesCache = [];
+        let currentExpenses = []; // 新增记账数据缓存
+        window.currentBonusCal = 0; 
+
+        // --- 记账视图与入口逻辑 (新增/修改) ---
+        
+        // 视图切换
+        window.openExpenseView = () => {
+            // 兼容移动端和桌面端
+            document.querySelector('.main-layout').style.display = 'none'; 
+            document.getElementById('expenseTrackerView').style.display = 'flex';
+            document.getElementById('app').style.display = 'none'; // 隐藏整个运动主页
+            
+            loadExpenseData(); // 加载记账数据
+        };
+        window.closeExpenseView = () => {
+            // 恢复主页显示
+            document.getElementById('app').style.display = 'flex';
+            document.querySelector('.main-layout').style.display = ''; // 恢复 CSS 默认或媒体查询设置
+            document.getElementById('expenseTrackerView').style.display = 'none';
+
+            if (unsubE) unsubE(); // 停止记账页面的监听
+        };
+
+        // 记账弹窗
+        window.openAddExpenseModal = () => {
+            document.getElementById('expenseDate').value = new Date().toISOString().substring(0, 10);
+            document.getElementById('expenseAmount').value = '';
+            document.getElementById('expensePayer').value = '我';
+            document.getElementById('expenseDescription').value = '';
+            document.getElementById('addExpenseModal').style.display = 'flex';
+        };
+        window.closeAddExpenseModal = () => {
+            document.getElementById('addExpenseModal').style.display = 'none';
+        };
+        
+        // 三连击入口逻辑
+        let clickCount = 0;
+        let lastClickTime = 0;
+
+        function handleTripleClick(event) {
+            const now = Date.now();
+            if (now - lastClickTime < 500) { // 500ms 内视为连击
+                clickCount++;
+            } else {
+                clickCount = 1;
+            }
+            lastClickTime = now;
+
+            if (clickCount === 3) {
+                if (currentUser) {
+                    window.openExpenseView();
+                    clickCount = 0; // 重置计数器
+                } else {
+                    alert("请先登录才能使用记账功能！");
+                }
+            }
+        }
+        
+        // 在 DOM 加载后，绑定事件
+        document.addEventListener('DOMContentLoaded', () => {
+             const headerEl = document.getElementById('appHeader');
+             // 由于 appHeader 是在 app 内部，app 初始是 hidden 的，所以我们监听它的点击事件
+             // 如果用户没登录 appHeader 是不存在的，所以我们在 onAuthStateChanged 里绑定更可靠
+        });
+
+        // 记账数据写入
+        window.saveExpenseManual = async () => {
+            if (!currentUser) return;
+            const date = document.getElementById('expenseDate').value;
+            const amount = Number(document.getElementById('expenseAmount').value.trim());
+            const payer = document.getElementById('expensePayer').value;
+            const description = document.getElementById('expenseDescription').value.trim();
+            
+            if (date && amount > 0 && payer) {
+                await addDoc(collection(db, `users/${currentUser.uid}/expenses`), { 
+                    date, 
+                    amount, 
+                    payer, 
+                    description,
+                    timestamp: serverTimestamp() 
+                });
+                closeAddExpenseModal();
+            } else {
+                alert("请填写正确的日期和金额！");
+            }
+        };
+
+        // 记账数据删除
+        window.deleteExpense = async (id) => {
+            if (confirm("删除此账目？")) { 
+                await deleteDoc(doc(db, `users/${currentUser.uid}/expenses`, id)); 
+            }
+        };
+
+        // 记账数据加载与监听
+        async function loadExpenseData() {
+            if (!currentUser) return;
+
+            if (unsubE) unsubE(); 
+
+            // 监听所有账目数据，按日期和时间降序排列
+            unsubE = onSnapshot(query(collection(db, `users/${currentUser.uid}/expenses`), orderBy("date", "desc"), orderBy("timestamp", "desc")), (snapshot) => {
+                currentExpenses = snapshot.docs.map(d => ({id: d.id, ...d.data()}));
+                
+                renderExpenseStats(currentExpenses); 
+                renderExpenseList(currentExpenses); 
+            });
+        }
+
+        // 渲染统计 (包含月、年、总)
+        function renderExpenseStats(expenses) {
+            const now = new Date();
+            const currentYear = now.getFullYear();
+            const currentMonth = String(now.getMonth() + 1).padStart(2, '0');
+            const currentMonthKey = `${currentYear}-${currentMonth}`;
+
+            document.getElementById('currentMonthYear').textContent = currentMonthKey;
+            document.getElementById('currentYear').textContent = currentYear;
+
+            const stats = { 
+                monthly: { '我': 0, '媳妇': 0, '七喜': 0, 'Total': 0 },
+                yearly: { '我': 0, '媳妇': 0, '七喜': 0, 'Total': 0 },
+                total: { '我': 0, '媳妇': 0, '七喜': 0, 'Total': 0 }
+            };
+            
+            expenses.forEach(e => {
+                // 确保 amount 是数字
+                const amount = Number(e.amount) || 0;
+                
+                // 历史总计
+                stats.total[e.payer] += amount;
+                stats.total['Total'] += amount;
+
+                // 本年总计
+                if (e.date.startsWith(String(currentYear))) {
+                    stats.yearly[e.payer] += amount;
+                    stats.yearly['Total'] += amount;
+                }
+
+                // 本月总计
+                if (e.date.startsWith(currentMonthKey)) {
+                    stats.monthly[e.payer] += amount;
+                    stats.monthly['Total'] += amount;
+                }
+            });
+
+            // 辅助渲染函数
+            const renderStatBlock = (data, elementId) => {
+                const colors = { '我': '#4f46e5', '媳妇': '#f97316', '七喜': '#0d9488' };
+                const summaryHtml = `
+                    <div class="expense-stat-card">
+                        <div class="expense-stat-val" style="color:${colors['我']};">¥${data['我'].toFixed(2)}</div>
+                        <div class="expense-stat-label">我</div>
+                    </div>
+                    <div class="expense-stat-card">
+                        <div class="expense-stat-val" style="color:${colors['媳妇']};">¥${data['媳妇'].toFixed(2)}</div>
+                        <div class="expense-stat-label">媳妇</div>
+                    </div>
+                    <div class="expense-stat-card">
+                        <div class="expense-stat-val" style="color:${colors['七喜']};">¥${data['七喜'].toFixed(2)}</div>
+                        <div class="expense-stat-label">七喜</div>
+                    </div>
+                    <div class="expense-total-summary">
+                        总计：<span style="font-size:1.3rem;">¥${data['Total'].toFixed(2)}</span>
+                    </div>
+                `;
+                document.getElementById(elementId).innerHTML = summaryHtml;
+            };
+
+            renderStatBlock(stats.monthly, 'monthlyStatsSummary');
+            renderStatBlock(stats.yearly, 'yearlyStatsSummary');
+            renderStatBlock(stats.total, 'totalStatsSummary');
+        }
+
+        // 渲染列表
+        function renderExpenseList(expenses) {
+            const listEl = document.getElementById('expenseList');
+            const colorMap = { '我': {bg: '#dbeafe', text: '#1d4ed8', border: '#93c5fd'}, '媳妇': {bg: '#fff7ed', text: '#f97316', border: '#fed7aa'}, '七喜': {bg: '#ccfbf1', text: '#0d9488', border: '#5eead4'} };
+            
+            listEl.innerHTML = expenses.map(e => {
+                const color = colorMap[e.payer] || {bg: '#f3e8ff', text: '#a855f7', border: '#d8b4fe'};
+                return `
+                    <div class="task-item" style="border-left: 5px solid ${color.text}; justify-content: space-between;">
+                        <div style="flex: 1; min-width: 0;">
+                            <div class="task-title" style="font-weight: 700;">¥${Number(e.amount).toFixed(2)}</div>
+                            <div style="font-size:0.75rem; color:#64748b; margin-top: 3px;">${e.description || '无描述'}</div>
+                        </div>
+                        <div style="text-align: right; margin-left: 10px; flex-shrink: 0;">
+                            <div class="task-cal-tag" style="background:${color.bg}; color:${color.text}; border:1px solid ${color.border};">${e.payer}</div>
+                            <div style="font-size:0.7rem; color:#94a3b8; margin-top: 3px;">${e.date}</div>
+                        </div>
+                        <button style="border:none;background:none;cursor:pointer;color:#ef4444; margin-left: 8px;" onclick="deleteExpense('${e.id}')">🗑️</button>
+                    </div>
+                `;
+            }).join('') || '<p style="text-align:center;color:#ccc;font-size:0.8rem;">暂无账目记录。</p>';
+        }
+
+
+        // --- 原有函数定义（保持不变） ---
+
+        // 登录/登出函数
+        function login() { return signInWithPopup(auth, provider); }
+        function logout() { return signOut(auth); }
+
+        async function loadKey() {
+            if (!currentUser) return; 
+            const d = await getDoc(doc(db, `users/${currentUser.uid}/settings`, "deepseek"));
+            if (d.exists()) document.getElementById('apiKey').value = d.data().apiKey;
+        }
+
+        window.saveKeyToFirebase = async () => {
+            if (!currentUser) { alert("请先登录！"); return; }
+            const key = document.getElementById('apiKey').value.trim();
+            if (!key) return;
+            await setDoc(doc(db, `users/${currentUser.uid}/settings`, "deepseek"), { apiKey: key, updatedAt: serverTimestamp() });
+            alert("✨ 云端同步成功！");
+        };
+
+        // 摘抄相关
+        async function syncQuotes() {
+            if (!currentUser) return; 
+            const qSnap = await getDocs(query(collection(db, `users/${currentUser.uid}/quotes`), orderBy("timestamp", "desc")));
+            quotesCache = qSnap.docs.map(d => ({id: d.id, ...d.data()}));
+            displayQuoteByDay();
+        }
+        function displayQuoteByDay() {
+            if (quotesCache.length === 0) { document.getElementById('quoteText').textContent = "书架还没书哦"; document.getElementById('quoteBook').textContent = "—— 试试录入书摘吧"; return; }
+            const q = quotesCache[parseInt(selectedDate.replace(/-/g, '')) % quotesCache.length];
+            document.getElementById('quoteText').textContent = `“${q.text}”`;
+            document.getElementById('quoteBook').textContent = `—— ${q.source || '未知'}`;
+        }
+        function refreshQuote() { if (quotesCache.length === 0) return; const q = quotesCache[Math.floor(Math.random() * quotesCache.length)]; document.getElementById('quoteText').textContent = `“${q.text}”`; document.getElementById('quoteBook').textContent = `—— ${q.source || '未知'}`; }
+        function openAddQuoteModal() { document.getElementById('editingQuoteId').value = ""; document.getElementById('quoteInput').value = ""; document.getElementById('quoteSource').value = ""; document.getElementById('addQuoteModal').style.display = 'flex'; }
+        function closeAddQuoteModal() { document.getElementById('addQuoteModal').style.display = 'none'; }
+        async function saveQuoteManual() {
+            if (!currentUser) return;
+            const text = document.getElementById('quoteInput').value.trim(); const source = document.getElementById('quoteSource').value.trim(); const qId = document.getElementById('editingQuoteId').value;
+            if (!text) return;
+            if (qId) await updateDoc(doc(db, `users/${currentUser.uid}/quotes`, qId), { text, source });
+            else await addDoc(collection(db, `users/${currentUser.uid}/quotes`), { text, source, timestamp: serverTimestamp() });
+            await syncQuotes(); closeAddQuoteModal();
+        }
+        function openManageQuotesModal() { renderManageQuotes(); document.getElementById('manageQuotesModal').style.display = 'flex'; }
+        function closeManageQuotesModal() { document.getElementById('manageQuotesModal').style.display = 'none'; }
+        function renderManageQuotes() {
+            const listEl = document.getElementById('quotesManageList');
+            listEl.innerHTML = quotesCache.map(q => `<div style="background:#f8fafc;padding:10px;border-radius:10px;margin-bottom:8px;font-size:0.85rem;"><div>${q.text}</div><div style="display:flex;justify-content:space-between;margin-top:5px;"><span>📖 ${q.source || ''}</span><div><button class="small-btn" onclick="editQuote('${q.id}')">编辑</button><button class="small-btn" onclick="deleteQuote('${q.id}')">删除</button></div></div></div>`).join('');
+        }
+        function editQuote(id) {
+            const q = quotesCache.find(x => x.id === id);
+            document.getElementById('editingQuoteId').value = q.id; document.getElementById('quoteInput').value = q.text; document.getElementById('quoteSource').value = q.source || "";
+            document.getElementById('manageQuotesModal').style.display = 'none'; document.getElementById('addQuoteModal').style.display = 'flex';
+        }
+        async function deleteQuote(id) { if (confirm("从书架移除？")) { await deleteDoc(doc(db, `users/${currentUser.uid}/quotes`, id)); await syncQuotes(); renderManageQuotes(); } }
+
+        // 日期导航
+        function changeDate(os) {
+            const d = new Date(selectedDate); d.setDate(d.getDate() + os);
+            selectedDate = `${d.getFullYear()}-${String(d.getMonth()+1).padStart(2,'0')}-${String(d.getDate()).padStart(2,'0')}`;
+            initView(selectedDate);
+        }
+        function jumpToDate(d) { if(d) { selectedDate = d; initView(d); } }
+
+        // 任务管理
+        function openAddTaskModal() { document.getElementById('addTaskModal').style.display = 'flex'; }
+        function closeAddTaskModal() { document.getElementById('addTaskModal').style.display = 'none'; }
+        async function saveTaskManual() {
+            if (!currentUser) return;
+            const title = document.getElementById('manualTaskInput').value.trim();
+            const cal = document.getElementById('manualCalInput').value.trim() || 0;
+            if (title) {
+                await addDoc(collection(db, `users/${currentUser.uid}/tasks`), { 
+                    title, 
+                    calories: Number(cal), 
+                    date: selectedDate, 
+                    isDone: false, 
+                    order: Date.now() 
+                });
+                closeAddTaskModal(); document.getElementById('manualTaskInput').value = ""; document.getElementById('manualCalInput').value = "";
+            }
+        }
+        async function deleteTask(id) { if(confirm("删除此项目？")) await deleteDoc(doc(db, `users/${currentUser.uid}/tasks`, id)); }
+        async function clearChats() { 
+            if(!currentUser || !confirm("清空今日对话？")) return;
+            const batch = writeBatch(db);
+            const q = await getDocs(query(collection(db, `users/${currentUser.uid}/chats`), where("date", "==", selectedDate)));
+            q.forEach(d => batch.delete(d.ref));
+            await batch.commit();
+        }
+        async function toggleTask(id, s, title) {
+            if (!currentUser || isProcessing) return;
+            const newStatus = !s;
+            await updateDoc(doc(db, `users/${currentUser.uid}/tasks`, id), { isDone: newStatus });
+            if (newStatus) {
+                await addDoc(collection(db, `users/${currentUser.uid}/chats`), { role: 'user', text: `打卡完成：${title}！💪`, date: selectedDate, timestamp: serverTimestamp() });
+                triggerTaskCoach(title);
+            }
+        }
+        async function forceInheritTasks() {
+            if (!currentUser) return;
+            const tCol = collection(db, `users/${currentUser.uid}/tasks`);
+            // 1. 查找上一个有任务的日期
+            const snapPast = await getDocs(query(tCol, where("date", "<", selectedDate), orderBy("date", "desc"), limit(1)));
+            if (snapPast.empty) { alert("未找到前序任务记录。"); return; }
+            
+            const sourceDate = snapPast.docs[0].data().date;
+            // 2. 获取该日期的所有任务 (包括已完成的)
+            const snapTasks = await getDocs(query(tCol, where("date", "==", sourceDate)));
+            
+            // 3. 删除当前日期的所有任务
+            const snapCurrent = await getDocs(query(tCol, where("date", "==", selectedDate)));
+            const deleteBatch = writeBatch(db);
+            snapCurrent.docs.forEach(d => deleteBatch.delete(d.ref));
+            await deleteBatch.commit();
+
+            // 4. 重新添加任务到当前日期 (全部设为未完成)
+            const addBatch = writeBatch(db);
+            snapTasks.docs.forEach(t => {
+                const newTaskRef = doc(tCol);
+                addBatch.set(newTaskRef, { 
+                    title: t.data().title, 
+                    calories: t.data().calories || 0,
+                    date: selectedDate, 
+                    isDone: false, // 强制设为未完成
+                    order: t.data().order || Date.now() 
+                });
+            });
+            await addBatch.commit();
+            alert(`已从 ${sourceDate} 同步任务，并设为待办。`);
+        }
+        
+        // 【获取前一天训练数据】
+        async function getPreviousDayData() {
+            if (!currentUser) return null;
+
+            const prevD = new Date(selectedDate);
+            prevD.setDate(prevD.getDate() - 1);
+            const prevDate = `${prevD.getFullYear()}-${String(prevD.getMonth()+1).padStart(2,'0')}-${String(prevD.getDate()).padStart(2,'0')}`;
+            
+            // 获取昨天的已完成任务
+            const qTasks = query(collection(db, `users/${currentUser.uid}/tasks`), where("date", "==", prevDate), where("isDone", "==", true));
+            const tasksSnap = await getDocs(qTasks);
+            const completedTasks = tasksSnap.docs.map(d => ({ title: d.data().title, calories: d.data().calories || 0 }));
+
+            // 获取昨天的额外卡路里（临时运动）
+            const statsSnap = await getDoc(doc(db, `users/${currentUser.uid}/dailyStats`, prevDate));
+            const bonusCalories = statsSnap.exists() ? (statsSnap.data().bonusCalories || 0) : 0;
+            
+            // 获取昨天的聊天记录 (用于提取用户在聊天中提到的额外运动)
+            const qChats = query(collection(db, `users/${currentUser.uid}/chats`), where("date", "==", prevDate), where("role", "==", "user"), orderBy("timestamp", "asc"));
+            const chatsSnap = await getDocs(qChats);
+            const userChats = chatsSnap.docs.map(d => d.data().text);
+
+            return { prevDate, completedTasks, bonusCalories, userChats };
+        }
+        
+        // 【触发日常总结】
+        async function triggerDailySummary(previousData) {
+            const key = document.getElementById('apiKey').value.trim();
+            if (!key || !previousData || previousData.completedTasks.length === 0) return; // 昨天没有完成任务，则不总结
+
+            const taskList = previousData.completedTasks.map(t => `${t.title} (清单卡路里: ${t.calories} kcal)`).join('; ');
+            const summaryPrompt = `用户昨天(${previousData.prevDate})完成了以下训练任务: [${taskList}]。此外，通过自由聊天提到了其他运动并估算消耗了 ${previousData.bonusCalories} 额外卡路里。请你扮演私人教练，根据这些信息，给出一个简短的总结、针对性建议和鼓励。重点提及用户在清单外的努力（如果有额外卡路里）。回复不超过120字。`;
+
+            try {
+                 const res = await fetch("https://api.deepseek.com/chat/completions", {
+                    method: "POST",
+                    headers: { "Content-Type": "application/json", "Authorization": `Bearer ${key}` },
+                    body: JSON.stringify({
+                        model: "deepseek-chat",
+                        messages: [
+                            { role: "system", content: "你是一个阳光幽默、记性极好的私人教练，任务是总结用户的昨日训练，给出鼓励和一条专业建议。回复不超过120字。" },
+                            { role: "user", content: summaryPrompt }
+                        ]
+                    })
+                });
+
+                const text = (await res.json()).choices[0].message.content;
+                await addDoc(collection(db, `users/${currentUser.uid}/chats`), { 
+                    role: 'coach', 
+                    text: `💪 昨天回顾：${text}`, 
+                    date: selectedDate, 
+                    timestamp: serverTimestamp() 
+                });
+            } catch (e) {
+                // 静默失败
+            }
+        }
+
+        // AI 核心逻辑
+        async function processAI() {
+            const input = document.getElementById('aiInput').value.trim();
+            const key = document.getElementById('apiKey').value.trim();
+            const aiBtn = document.getElementById('aiBtn');
+
+            if (!input || !key || isProcessing || !currentUser) return;
+            
+            isProcessing = true; 
+            aiBtn.disabled = true;
+            aiBtn.textContent = "发送中..."; 
+            
+            // 【检查是否是当日非打卡第一条消息】
+            const isFirstChatToday = !chatsCache.some(c => c.role === 'user' && !c.text.startsWith('打卡完成'));
+            
+            try {
+                // 1. 记录用户输入
+                await addDoc(collection(db, `users/${currentUser.uid}/chats`), { role: 'user', text: input, date: selectedDate, timestamp: serverTimestamp() });
+                document.getElementById('aiInput').value = "";
+
+                // 【触发昨日总结】
+                if (isFirstChatToday) {
+                    const previousData = await getPreviousDayData();
+                    triggerDailySummary(previousData);
+                }
+
+                // 2. 准备历史对话
+                const history = chatsCache.slice(-50).map(c => ({ role: c.role === 'coach' ? 'assistant' : 'user', content: c.text }));
+
+                // 3. 调用 DeepSeek API
+                const res = await fetch("https://api.deepseek.com/chat/completions", {
+                    method: "POST",
+                    headers: { "Content-Type": "application/json", "Authorization": `Bearer ${key}` },
+                    body: JSON.stringify({
+                        model: "deepseek-chat",
+                        messages: [
+                            { role: "system", content: "你是一个阳光幽默、记性极好的私人教练。你会参考对话历史来给予贴心反馈。如果用户提到做了清单外的运动，请夸奖并估算卡路里。JSON格式回复：{ 'coach_reply': '...', 'bonus_calories': 300 }。bonus_calories只在估算卡路里时提供，否则为0。" },
+                            ...history,
+                            { role: "user", content: input }
+                        ],
+                        response_format: { type: "json_object" }
+                    })
+                });
+
+                const result = await res.json();
+                
+                if (result.error) {
+                    throw new Error(result.error.message || 'DeepSeek API 返回错误');
+                }
+                
+                const aiResponse = JSON.parse(result.choices[0].message.content);
+                
+                // 4. 记录教练回复
+                await addDoc(collection(db, `users/${currentUser.uid}/chats`), { role: 'coach', text: aiResponse.coach_reply, date: selectedDate, timestamp: serverTimestamp() });
+                
+                // 5. 记录额外卡路里
+                if (aiResponse.bonus_calories > 0) {
+                    await setDoc(doc(db, `users/${currentUser.uid}/dailyStats`, selectedDate), { bonusCalories: increment(aiResponse.bonus_calories) }, { merge: true });
+                }
+            } catch (e) {
+                console.error("AI处理错误:", e);
+                const errorMessage = `对不起，AI 教练今天有点累了（可能是 Key 错误、网络连接问题或DeepSeek频率限制）。请检查控制台获取更多错误信息。`;
+                
+                await addDoc(collection(db, `users/${currentUser.uid}/chats`), { role: 'coach', text: errorMessage, date: selectedDate, timestamp: serverTimestamp() });
+                
+                if (!key) {
+                     alert("DeepSeek Key 为空，请检查 Key 是否已粘贴或云端 Key 是否已成功加载。");
+                }
+                
+            } finally {
+                isProcessing = false;
+                aiBtn.disabled = false;
+                aiBtn.textContent = "发送";
+            }
+        }
+        
+        async function triggerTaskCoach(title) {
+            if (!currentUser) return;
+            const key = document.getElementById('apiKey').value.trim(); 
+            if (!key) return;
+            
+            const shortHistory = chatsCache.slice(-5).map(c => ({ role: c.role === 'coach' ? 'assistant' : 'user', content: c.text }));
+            try {
+                const res = await fetch("https://api.deepseek.com/chat/completions", {
+                    method: "POST",
+                    headers: { "Content-Type": "application/json", "Authorization": `Bearer ${key}` },
+                    body: JSON.stringify({
+                        model: "deepseek-chat",
+                        messages: [
+                            { role: "system", content: "你是一个专业的私人教练。用户刚完成一个任务，请给出一条关于该动作的**专业建议、注意事项或细节**，帮助用户做得更标准、避免受伤。回复不超过 80 字。" },
+                            ...shortHistory,
+                            { role: "user", content: `针对我的任务：${title}，给我专业反馈。` }
+                        ]
+                    })
+                });
+                const text = (await res.json()).choices[0].message.content;
+                await addDoc(collection(db, `users/${currentUser.uid}/chats`), { role: 'coach', text: text, date: selectedDate, timestamp: serverTimestamp() });
+            } catch (e) {
+                // 静默失败
+            }
+        }
+
+        async function triggerGreeting() {
+            if (!currentUser) return;
+            const key = document.getElementById('apiKey').value.trim(); 
+            if (!key) return;
+            try {
+                const res = await fetch("https://api.deepseek.com/chat/completions", {
+                    method: "POST",
+                    headers: { "Content-Type": "application/json", "Authorization": `Bearer ${key}` },
+                    body: JSON.stringify({
+                        model: "deepseek-chat",
+                        messages: [{ role: "system", content: "清晨问候。阳光励志，带一句名言。40字内。" }]
+                    })
+                });
+                const text = (await res.json()).choices[0].message.content;
+                await addDoc(collection(db, `users/${currentUser.uid}/chats`), { role: 'coach', text: text, date: selectedDate, timestamp: serverTimestamp() });
+            } catch (e) {
+                 // 静默失败
+            }
+        }
+        
+        // 实时数据监听函数
+        function initView(date) {
+            if (!currentUser) return;
+            document.getElementById('dateDisplay').textContent = date;
+            
+            // 停止之前的监听
+            if (unsubT) unsubT();
+            if (unsubC) unsubC();
+            if (unsubS) unsubS();
+            window.currentBonusCal = 0; 
+
+            // 任务列表监听
+            unsubT = onSnapshot(query(collection(db, `users/${currentUser.uid}/tasks`), where("date", "==", date), orderBy("order", "asc")), (snapshot) => {
+                currentTasks = snapshot.docs.map(d => ({id: d.id, ...d.data()}));
+                renderTasks();
+                // 每次任务更新时，重新计算任务卡路里并更新总卡路里显示
+                const totalTaskCal = currentTasks.filter(t => t.isDone).reduce((sum, t) => sum + (t.calories || 0), 0);
+                document.getElementById('totalCalories').textContent = totalTaskCal + (window.currentBonusCal || 0);
+            });
+
+            // 聊天记录监听
+            unsubC = onSnapshot(query(collection(db, `users/${currentUser.uid}/chats`), where("date", "==", date), orderBy("timestamp", "asc")), (snapshot) => {
+                chatsCache = snapshot.docs.map(d => ({id: d.id, ...d.data()}));
+                renderChats(chatsCache);
+            });
+            
+            // 每日统计和额外卡路里监听
+            unsubS = onSnapshot(doc(db, `users/${currentUser.uid}/dailyStats`, date), (docSnap) => {
+                const bonusCal = docSnap.exists() ? (docSnap.data().bonusCalories || 0) : 0;
+                window.currentBonusCal = bonusCal; // 更新全局变量
+                // 重新计算总卡路里
+                const totalTaskCal = currentTasks.filter(t => t.isDone).reduce((sum, t) => sum + (t.calories || 0), 0);
+                document.getElementById('totalCalories').textContent = totalTaskCal + bonusCal;
+            });
+
+            syncQuotes(); // 加载并显示书摘
+            loadKey();    // 加载云端 API Key
+        }
+
+        // 视图渲染与状态计算
+        function renderTasks() {
+            const todoList = document.getElementById('todoList');
+            const doneList = document.getElementById('doneList');
+            let todoHtml = '';
+            let doneHtml = '';
+
+            // 排序: 未完成在前，已完成在后
+            const sortedTasks = [...currentTasks].sort((a, b) => a.order - b.order); 
+
+            sortedTasks.forEach(t => {
+                const itemHtml = `
+                    <div class="task-item ${t.isDone ? 'done' : ''}">
+                        <div class="checkbox" onclick="toggleTask('${t.id}', ${t.isDone}, '${t.title.replace(/'/g, "\\'")}')"></div>
+                        <div class="task-title">${t.title}</div>
+                        ${t.calories > 0 ? `<div class="task-cal-tag">${t.calories} kcal</div>` : ''}
+                        <button style="border:none;background:none;cursor:pointer;color:#ef4444" onclick="deleteTask('${t.id}')">🗑️</button>
+                    </div>
+                `;
+                if (t.isDone) {
+                    doneHtml += itemHtml;
+                } else {
+                    todoHtml += itemHtml;
+                }
+            });
+            
+            todoList.innerHTML = todoHtml || '<p style="text-align:center;color:#ccc;font-size:0.8rem;">今日无待办任务，快去增加吧！</p>';
+            doneList.innerHTML = doneHtml || '<p style="text-align:center;color:#ccc;font-size:0.8rem;">暂无已完成项目。</p>';
+        }
+
+        function renderChats(chats) {
+            const el = document.getElementById('chatBox');
+            el.innerHTML = chats.map(c => `<div class="msg msg-${c.role}">${c.text}</div>`).join('');
+            el.scrollTop = el.scrollHeight;
+        }
+
+        // 认证状态监听
+        onAuthStateChanged(auth, (user) => {
+            if (user) {
+                // 用户已登录
+                currentUser = user;
+                document.getElementById('userName').textContent = `你好，${user.displayName || user.email}`;
+                document.getElementById('loginScreen').style.display = 'none';
+                document.getElementById('app').style.display = 'flex';
+                
+                // 1. 初始化视图：加载当前日期的数据
+                initView(selectedDate);
+                
+                // 2. 检查并触发问候 (确保只在当天第一次加载时触发)
+                setTimeout(async () => {
+                    // 检查当日是否有任何聊天记录
+                    const qSnap = await getDocs(query(collection(db, `users/${currentUser.uid}/chats`), where("date", "==", selectedDate), limit(1)));
+                    if (qSnap.empty) {
+                        triggerGreeting();
+                    }
+                }, 1000); 
+                
+                // 3. 绑定三连击入口事件
+                document.getElementById('appHeader').addEventListener('click', handleTripleClick);
+
+            } else {
+                // 用户未登录或已登出
+                currentUser = null;
+                document.getElementById('userName').textContent = `你好`;
+                document.getElementById('loginScreen').style.display = 'flex';
+                document.getElementById('app').style.display = 'none';
+
+                // 停止实时监听
+                if (unsubT) unsubT();
+                if (unsubC) unsubC();
+                if (unsubS) unsubS();
+                if (unsubE) unsubE(); // 停止记账监听
+
+                // 解绑三连击入口事件（可选，但推荐）
+                const headerEl = document.getElementById('appHeader');
+                if (headerEl) headerEl.removeEventListener('click', handleTripleClick);
+            }
+        });
+
+
+        // --- 统一挂载到 window 对象（解决 is not defined 错误） ---
+        window.login = login;
+        window.logout = logout;
+        window.refreshQuote = refreshQuote;
+        window.openAddQuoteModal = openAddQuoteModal;
+        window.closeAddQuoteModal = closeAddQuoteModal;
+        window.saveQuoteManual = saveQuoteManual;
+        window.openManageQuotesModal = openManageQuotesModal;
+        window.closeManageQuotesModal = closeManageQuotesModal;
+        window.editQuote = editQuote;
+        window.deleteQuote = deleteQuote;
+
+        window.changeDate = changeDate;
+        window.jumpToDate = jumpToDate;
+
+        window.openAddTaskModal = openAddTaskModal;
+        window.closeAddTaskModal = closeAddTaskModal;
+        window.saveTaskManual = saveTaskManual;
+        window.deleteTask = deleteTask;
+        window.clearChats = clearChats;
+        window.toggleTask = toggleTask; 
+        window.forceInheritTasks = forceInheritTasks;
+        window.initView = initView; 
+        window.processAI = processAI;
+        
+        // 记账相关函数挂载
+        window.openExpenseView = openExpenseView;
+        window.closeExpenseView = closeExpenseView;
+        window.openAddExpenseModal = openAddExpenseModal;
+        window.closeAddExpenseModal = closeAddExpenseModal;
+        window.saveExpenseManual = saveExpenseManual;
+        window.deleteExpense = deleteExpense;
+        
+    </script>
+</body>
+</html>
