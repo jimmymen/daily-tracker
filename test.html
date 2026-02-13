@@ -801,7 +801,6 @@
             const key = document.getElementById('apiKey').value.trim(); 
             if (!key) return;
             try {
-                // 增强 Prompt：加入对 2026 年宏观经济数据和节假日的联网搜索指令
                 const res = await fetch("https://api.deepseek.com/chat/completions", {
                     method: "POST",
                     headers: { "Content-Type": "application/json", "Authorization": `Bearer ${key}` },
@@ -809,11 +808,12 @@
                         model: "deepseek-chat",
                         messages: [{ 
                             role: "system", 
-                            content: `你是一个阳光励志的私人教练兼宏观经济助手。今天是 ${selectedDate}。
-                            请给出一个简短的清晨问候（含一句名言）。
-                            然后，请【联网搜索或检索知识库】，告知用户从今天起未来一周内，最重要的美国经济数据确切发布日期（重点关注：非农就业报告NFP、CPI物价指数、美联储议息会议FOMC）或美国重要节假日，并说明距离今天还有几天。
-                            如果没有极其重大的数据，则重点进行训练鼓励。
-                            要求：口吻专业且充满活力，总字数控制在 100 字左右。` 
+                            content: `你是阳光励志的私人教练。今天是 ${selectedDate}。
+                            请给出一个简短的清晨问候（含一句名言），字数40以内。
+                            接着，请根据你的知识库/联网检索，预告从 ${selectedDate} 起未来7天内美国最重大的经济数据（重点：非农NFP、CPI、美联储FOMC）或重要节假日。
+                            必须包含：确切日期、事件名称、以及“距离现在还有X天”。
+                            如果未来一周确实没有任何特大数据，则仅进行高强度的运动鼓励。
+                            回复总字数控制在120字左右。` 
                         }]
                     })
                 });
