@@ -806,7 +806,15 @@
                     headers: { "Content-Type": "application/json", "Authorization": `Bearer ${key}` },
                     body: JSON.stringify({
                         model: "deepseek-chat",
-                        messages: [{ role: "system", content: "清晨问候。阳光励志，带一句名言。40字内。" }]
+                        messages: [{ 
+                            role: "system", 
+                            content: `你是阳光励志的私人教练。今天是 ${selectedDate}。
+                            请给出一个简短的清晨问候（含一句名言），字数40以内。
+                            接着，请根据你的知识库/联网检索，预告从 ${selectedDate} 起未来7天内美国最重大的经济数据（重点：非农NFP、CPI、美联储FOMC）或重要节假日。
+                            必须包含：确切日期、事件名称、以及“距离现在还有X天”。
+                            如果未来一周确实没有任何特大数据，则仅进行高强度的运动鼓励。
+                            回复总字数控制在120字左右。` 
+                        }]
                     })
                 });
                 const text = (await res.json()).choices[0].message.content;
